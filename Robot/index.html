@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot — V2</title>
+<style>
+/* ===================== Apparence ===================== */
+:root {
+  --bleu: #24527d;
+  --bleu-vif: #3b82c4;
+  --creme: #f4f1ea;
+  --sable: #e8e3d7;
+  --bord: #d6cfbf;
+  --encre: #2b2b2b;
+  --gris: #6f6a60;
+  --rouge: #c0392b;
+  --orange: #b9770e;
+  --vert: #1e8449;
+  --or: #d4a017;
+  --police: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --code: ui-monospace, Menlo, "SF Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--police);
+  color: var(--encre);
+  background:
+    radial-gradient(1100px 650px at 12% -5%, #fff6e3 0%, rgba(255, 246, 227, 0) 60%),
+    radial-gradient(900px 600px at 100% 100%, #dbe9f7 0%, rgba(219, 233, 247, 0) 58%),
+    #f2eee4;
+}
+[hidden] { display: none !important; }
+#app { display: flex; justify-content: center; padding: 12px 16px; }
+.visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Menu ---------- */
+#ecran-config {
+  width: min(660px, 100%);
+  margin-top: 3vh;
+  padding: 26px 34px 28px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  box-shadow: 0 18px 50px rgba(60, 50, 30, 0.14), 0 2px 6px rgba(60, 50, 30, 0.08);
+}
+.entete { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; }
+.entete h1 { margin: 0; font-size: 2.15rem; font-weight: 800; letter-spacing: -0.01em; color: var(--bleu); }
+.entete .version {
+  align-self: flex-start; margin-top: 6px; padding: 2px 9px; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 700; color: #fff; background: var(--bleu-vif);
+}
+#mascotte { width: 56px; height: 56px; flex: none; }
+.grille-config { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
+.etiquette { justify-self: end; text-align: right; font-size: 1.05rem; }
+.champ {
+  width: 5.2ch; padding: 6px 8px; text-align: center; font: 600 1.15rem var(--police);
+  color: var(--encre); background: #fff; border: 2px solid var(--bord); border-radius: 12px; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.champ:focus { border-color: var(--bleu-vif); box-shadow: 0 0 0 4px rgba(59, 130, 196, 0.2); }
+.choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.choix button { font-family: var(--police); cursor: pointer; }
+#niveaux button {
+  padding: 6px 13px; font-size: 0.98rem; color: #333; background: var(--sable);
+  border: 2px solid transparent; border-radius: 10px; transition: background .15s, transform .1s;
+}
+#niveaux button:hover { background: #ddd6c4; }
+#niveaux button.choisi { color: #fff; background: var(--bleu); }
+#couleurs button {
+  width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 3px solid transparent;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.16), inset 0 3px 0 rgba(255, 255, 255, 0.25);
+  transition: transform .12s;
+}
+#couleurs button:hover { transform: scale(1.1); }
+#couleurs button.choisi { outline: 3px solid #333; outline-offset: 2px; }
+#personnages button {
+  width: 76px; height: 76px; padding: 0; background: transparent; border: 3px solid transparent; border-radius: 16px;
+  transition: background .15s, transform .12s;
+}
+#personnages button:hover { transform: translateY(-2px); background: rgba(0, 0, 0, 0.04); }
+#personnages button.choisi { background: var(--creme); border-color: #333; }
+#personnages canvas { display: block; width: 70px; height: 70px; margin: 0 auto; }
+.case { display: inline-flex; align-items: center; gap: 9px; font-size: 1.05rem; cursor: pointer; user-select: none; }
+.case input { width: 20px; height: 20px; accent-color: var(--bleu); }
+.astuce { margin: 18px 0 0; text-align: center; font-size: 0.95rem; color: var(--gris); }
+.erreur { min-height: 1.5em; margin: 6px 0 0; text-align: center; font-size: 0.95rem; color: var(--rouge); }
+.erreur.orange { color: var(--orange); }
+.boutons { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
+.bouton {
+  min-width: 110px; padding: 10px 22px; font: 700 1.05rem var(--police); cursor: pointer;
+  color: var(--bleu); background: #fff; border: 2px solid var(--bord); border-radius: 14px;
+  transition: transform .1s, box-shadow .15s, background .15s;
+}
+.bouton:hover { background: var(--creme); }
+.bouton:active { transform: translateY(1px); }
+.bouton.principal {
+  color: #fff; background: linear-gradient(180deg, #4a93d6, var(--bleu-vif)); border-color: var(--bleu);
+  box-shadow: 0 4px 0 var(--bleu), 0 8px 16px rgba(36, 82, 125, 0.25);
+}
+.bouton.principal:hover { background: linear-gradient(180deg, #5aa2e4, #4a93d6); }
+.bouton.principal:active { box-shadow: 0 1px 0 var(--bleu), 0 3px 8px rgba(36, 82, 125, 0.25); transform: translateY(3px); }
+button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; }
+
+/* ---------- Partie ---------- */
+#ecran-jeu { display: flex; flex-direction: column; align-items: center; width: 100%; }
+#compteur {
+  min-height: 34px; margin: 0 0 6px; font-size: 1.15rem; font-weight: 800; color: var(--bleu);
+  transition: color .25s, transform .25s; text-align: center;
+}
+#compteur.or { color: var(--or); transform: scale(1.06); }
+#plateau-cadre { position: relative; flex: none; }
+#plateau-cadre canvas { position: absolute; left: 0; top: 0; display: block; }
+#effets { pointer-events: none; }
+.bas { width: var(--largeur, 460px); max-width: 100%; }
+#formulaire-ligne { display: flex; gap: 8px; }
+#saisie {
+  flex: 1; min-width: 0; padding: 9px 14px; text-align: center; font: 600 1.35rem var(--code); color: var(--encre);
+  background: #fff; border: 2px solid var(--bord); border-radius: 14px; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+#saisie:focus { border-color: var(--bleu-vif); box-shadow: 0 0 0 4px rgba(59, 130, 196, 0.2); }
+#bouton-ligne { min-width: 74px; padding: 8px 16px; }
+#bande {
+  min-height: 30px; margin-top: 6px; padding: 3px 10px; font: 500 1.02rem/1.55 var(--code); text-align: center;
+  white-space: pre-wrap; color: var(--gris); overflow-wrap: anywhere;
+}
+#bande .fait { color: #a8a294; }
+#bande .termine { color: #a8a294; }
+#bande .bloc { background: rgba(59, 130, 196, 0.12); border-radius: 6px; padding: 1px 0; }
+#bande .actif { color: #fff; background: var(--bleu-vif); border-radius: 6px; padding: 1px 5px; font-weight: 700; }
+#bande .actif.choc { background: #e74c3c; }
+#bande .actif.prise { background: var(--or); }
+#bande .tour { margin-left: 6px; padding: 1px 7px; font: 700 0.8rem var(--police); color: var(--bleu); background: #dbe9f7; border-radius: 999px; }
+#message { min-height: 1.6em; margin-top: 2px; text-align: center; font-size: 1rem; font-weight: 600; color: var(--rouge); }
+#aide { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; }
+#aide button {
+  padding: 4px 11px; font: 500 0.95rem var(--code); color: var(--bleu); background: #eeeae0;
+  border: 1px solid var(--bord); border-radius: 10px; cursor: pointer; transition: background .12s, transform .1s;
+}
+#aide button:hover { background: #fff; transform: translateY(-1px); }
+#aide .sep { color: #aaa; }
+#aide-detail { margin-top: 5px; text-align: center; font-size: 0.82rem; color: #8b867b; }
+
+/* ---------- Au revoir ---------- */
+#ecran-adieu { margin-top: 12vh; text-align: center; }
+#ecran-adieu h2 { font-size: 2rem; color: var(--bleu); margin: 0 0 8px; }
+#ecran-adieu p { margin: 0 0 18px; color: var(--gris); }
+
+@media (max-width: 560px) {
+  #ecran-config { padding: 20px 16px; }
+  .grille-config { grid-template-columns: 1fr; }
+  .etiquette { justify-self: start; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<main id="app">
+
+  <!-- ============ Menu ============ -->
+  <section id="ecran-config" aria-labelledby="titre-jeu">
+    <div class="entete">
+      <canvas id="mascotte" aria-hidden="true"></canvas>
+      <h1 id="titre-jeu">Robot</h1>
+      <span class="version">V2</span>
+    </div>
+    <div class="grille-config">
+      <label class="etiquette" for="champ-taille">Taille des cases ? (20 à 60)</label>
+      <input class="champ" id="champ-taille" type="text" inputmode="numeric" autocomplete="off" maxlength="3">
+      <label class="etiquette" for="champ-colonnes" id="texte-colonnes">Combien de colonnes ?</label>
+      <input class="champ" id="champ-colonnes" type="text" inputmode="numeric" autocomplete="off" maxlength="4">
+      <label class="etiquette" for="champ-lignes" id="texte-lignes">Combien de lignes ?</label>
+      <input class="champ" id="champ-lignes" type="text" inputmode="numeric" autocomplete="off" maxlength="4">
+      <label class="etiquette" for="champ-pieces">Combien de pièces ? (0 à 10)</label>
+      <input class="champ" id="champ-pieces" type="text" inputmode="numeric" autocomplete="off" maxlength="3">
+      <span class="etiquette" id="etiquette-murs">Murs</span>
+      <div class="choix" id="niveaux" role="radiogroup" aria-labelledby="etiquette-murs"></div>
+      <span class="etiquette" id="etiquette-couleur">Couleur</span>
+      <div class="choix" id="couleurs" role="radiogroup" aria-labelledby="etiquette-couleur"></div>
+      <span class="etiquette" id="etiquette-perso">Personnage</span>
+      <div class="choix" id="personnages" role="radiogroup" aria-labelledby="etiquette-perso"></div>
+      <span></span>
+      <label class="case"><input type="checkbox" id="champ-trace"> Laisser une trace</label>
+    </div>
+    <p class="astuce">Entrée : case suivante &nbsp;·&nbsp; Go : jouer</p>
+    <p class="erreur" id="erreur-config" role="alert"></p>
+    <div class="boutons">
+      <button type="button" class="bouton principal" id="bouton-go">Go</button>
+      <button type="button" class="bouton" id="bouton-exit">Exit</button>
+    </div>
+  </section>
+
+  <!-- ============ Partie ============ -->
+  <section id="ecran-jeu" hidden>
+    <div id="compteur" role="status"></div>
+    <div id="plateau-cadre">
+      <canvas id="plateau" aria-label="Le damier"></canvas>
+      <canvas id="effets" aria-hidden="true"></canvas>
+    </div>
+    <div class="bas" id="bas">
+      <form id="formulaire-ligne" autocomplete="off">
+        <input id="saisie" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Tes instructions">
+        <button type="submit" class="bouton principal" id="bouton-ligne">Go</button>
+      </form>
+      <div id="bande" aria-hidden="true"></div>
+      <div id="message" role="alert"></div>
+      <div id="aide"></div>
+      <div id="aide-detail"></div>
+    </div>
+    <div id="annonce" class="visuellement-cache" aria-live="polite"></div>
+  </section>
+
+  <!-- ============ Au revoir ============ -->
+  <section id="ecran-adieu" hidden>
+    <h2>À bientôt !</h2>
+    <p>Tu peux fermer cet onglet.</p>
+    <button type="button" class="bouton principal" id="bouton-retour">Rejouer</button>
+  </section>
+
+</main>
+
+<script id="logique">
+// =====================================================================================
+//  LOGIQUE DU JEU — fonctions pures
+//  Rien dans ce bloc ne dessine, ne lit la page (DOM) ni n'écrit dans localStorage :
+//  chaque fonction reçoit ses données en paramètres et renvoie un résultat.
+//  C'est ce qui permet de la tester sans écran (voir tests/test_logique.mjs).
+//  Port fidèle de robot_v2.command (V2 Python) ; les écarts sont listés dans MANUEL_robot_web.md.
+//
+//  Quelques constructions JavaScript, pour qui vient de Python :
+//   - un Set est un ensemble, un Map un dictionnaire ; « new Set(autre) » en fait une copie ;
+//   - une case (colonne, ligne) est écrite en texte "c,l" (fonction cle) pour servir de clé ;
+//   - { ...etat, x: 3 } copie l'objet « etat » en changeant x (l'original n'est jamais modifié) ;
+//   - const [dx, dy] = liste  déballe une liste, comme  dx, dy = liste  en Python.
+// =====================================================================================
+
+
+// ---------- Réglages fixes (mêmes valeurs que la V2 Python) ----------
+
+const VERSION = "2";
+const TAILLE_MINI = 20;        // taille d'une case, en pixels : minimum…
+const TAILLE_MAXI = 60;        // … et maximum
+const PERSO_MINI = 56;         // le personnage fait au moins 56 pixels…
+const PERSO_FOIS = 1.6;        // … ou 1,6 fois la taille d'une case
+const VITESSE = 250;           // pause entre deux actions (un pas ou « take »), en millisecondes
+const MAXIMUM = 50;            // nombre de pas maximum pour une ligne de commandes, boucles comprises
+const MINI_CASES = 3;          // damier de 3 × 3 au minimum
+const PIECES_MAXI = 10;        // nombre de pièces maximum dans le menu
+const PORTE_PART = 0.10;       // une porte occupe 10 % de son mur (au moins une case)
+const MUR_LONGUEUR_PART = 0.20; // un segment de mur fait de 2 cases à 20 % du côté du damier
+const NIVEAUX = { aucun: 0.0, facile: 0.05, moyen: 0.10, difficile: 0.15 };  // part des cases en mur
+const DIRECTIONS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+const PRENDRE = "take";        // l'instruction qui prend la pièce de la case où l'on est
+const COULEURS_NOMS = ["bleu", "rouge", "vert", "violet", "orange", "rose"];
+const PERSONNAGES = ["robot", "chat", "fusée"];
+const REGLAGES_PAR_DEFAUT = {
+  taille: 30, colonnes: 30, lignes: 30, pieces: 5,
+  niveau: "moyen", couleur: "bleu", personnage: "robot", trace: false,
+};
+
+
+// ---------- Petits outils ----------
+
+function cle(c, l) {
+  // Une case = le texte "colonne,ligne". Sert de clé dans les Set et les Map.
+  return c + "," + l;
+}
+
+function decoder(k) {
+  // Inverse de cle() : "3,5" devient [3, 5].
+  return k.split(",").map(Number);
+}
+
+function arrondiPython(x) {
+  // round() de Python : quand on tombe pile sur .5, on va vers le nombre PAIR (2,5 → 2 ; 3,5 → 4).
+  // Math.round de JavaScript arrondit toujours vers le haut (2,5 → 3), d'où ce petit calcul.
+  const bas = Math.floor(x);
+  const reste = x - bas;
+  if (reste < 0.5) return bas;
+  if (reste > 0.5) return bas + 1;
+  return bas % 2 === 0 ? bas : bas + 1;
+}
+
+function lireEntier(texte) {
+  // « 12 » → 12 ; tout ce qui n'est pas uniquement des chiffres → null (équivaut à isdigit() de Python).
+  const t = String(texte).trim();
+  return /^\d+$/.test(t) ? Number(t) : null;
+}
+
+
+// ---------- Hasard (injecté, donc remplaçable par un tirage reproductible dans les tests) ----------
+
+function fabriquerHasard(alea) {
+  // « alea » est une fonction qui renvoie un nombre entre 0 (inclus) et 1 (exclu), comme Math.random.
+  return {
+    entier(min, max) {                    // entier entre min et max, bornes comprises (comme random.randint)
+      return min + Math.floor(alea() * (max - min + 1));
+    },
+    choix(liste) {                        // un élément au hasard (comme random.choice)
+      return liste[Math.floor(alea() * liste.length)];
+    },
+    echantillon(liste, n) {               // n éléments distincts (comme random.sample)
+      const reste = liste.slice();
+      const resultat = [];
+      while (resultat.length < n && reste.length > 0) {
+        const i = Math.floor(alea() * reste.length);
+        resultat.push(reste[i]);
+        reste[i] = reste[reste.length - 1];
+        reste.pop();
+      }
+      return resultat;
+    },
+  };
+}
+
+function creerHasard(graine) {
+  // Générateur reproductible (mulberry32) : même graine, mêmes tirages. Sert aux tests.
+  let a = graine >>> 0;
+  return fabriquerHasard(() => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  });
+}
+
+const hasardNavigateur = fabriquerHasard(Math.random);   // le vrai hasard, pour jouer
+
+
+// ---------- Dimensions ----------
+
+function taillePerso(t) {
+  // Taille du personnage pour des cases de t pixels.
+  return Math.max(PERSO_MINI, arrondiPython(t * PERSO_FOIS));
+}
+
+function margeDamier(t) {
+  // Bord autour du damier, pour que le personnage (plus grand qu'une case) ne soit pas coupé.
+  return Math.floor((taillePerso(t) - t) / 2) + 2;
+}
+
+function limitesDamier(t, largeurFenetre, hauteurFenetre) {
+  // Nombre maximum de colonnes et de lignes qui tiennent dans la fenêtre avec des cases de t pixels.
+  // 80 et 220 : marges réservées (bords, case de saisie, aides) ; mêmes valeurs que la V2.
+  const marge = margeDamier(t);
+  return {
+    maxiColonnes: Math.max(MINI_CASES, Math.floor((largeurFenetre - 80 - 2 * marge) / t)),
+    maxiLignes: Math.max(MINI_CASES, Math.floor((hauteurFenetre - 220 - 2 * marge) / t)),
+  };
+}
+
+function largeurPorte(colonnes, lignes, mur) {
+  // Nombre de cases d'une porte : 10 % de la longueur de son mur, arrondi (au plus près, .5 vers le haut),
+  // au moins 1. Les murs « left » et « right » mesurent « lignes » cases, « up » et « down » « colonnes ».
+  const longueur = (mur === "left" || mur === "right") ? lignes : colonnes;
+  return Math.max(1, Math.floor(longueur * PORTE_PART + 0.5));
+}
+
+
+// ---------- Réglages du menu ----------
+
+function messageLimites(champ, t, largeurFenetre, hauteurFenetre) {
+  // Message affiché quand un champ du menu est hors limites (mêmes textes que la V2).
+  if (champ === "taille") return "La taille des cases va de " + TAILLE_MINI + " à " + TAILLE_MAXI + ".";
+  const { maxiColonnes, maxiLignes } = limitesDamier(t, largeurFenetre, hauteurFenetre);
+  if (champ === "colonnes") return "Les colonnes vont de " + MINI_CASES + " à " + maxiColonnes + ".";
+  if (champ === "lignes") return "Les lignes vont de " + MINI_CASES + " à " + maxiLignes + ".";
+  return "";
+}
+
+function ajusterAuMaximum(texte, maxi) {
+  // Si le nombre tapé dépasse le maximum, on le ramène au maximum. Renvoie { valeur, ajuste }.
+  const n = lireEntier(texte);
+  if (n !== null && n > maxi) return { valeur: String(maxi), ajuste: true };
+  return { valeur: texte, ajuste: false };
+}
+
+function validerReglages(brut, largeurFenetre, hauteurFenetre) {
+  // Vérifie tous les champs du menu (valeurs en texte, comme tapées). Même ordre de contrôle que la V2 :
+  // taille, puis colonnes et lignes, puis pièces.
+  // Renvoie { ok: true, reglages } ou { ok: false, message, champ } (champ = celui où remettre le curseur).
+  const t = lireEntier(brut.taille);
+  if (t === null || t < TAILLE_MINI || t > TAILLE_MAXI) {
+    return { ok: false, message: messageLimites("taille", 0, 0, 0), champ: "taille" };
+  }
+  const { maxiColonnes, maxiLignes } = limitesDamier(t, largeurFenetre, hauteurFenetre);
+  const c = lireEntier(brut.colonnes);
+  const l = lireEntier(brut.lignes);
+  const cOk = c !== null && c >= MINI_CASES && c <= maxiColonnes;
+  const lOk = l !== null && l >= MINI_CASES && l <= maxiLignes;
+  if (!cOk || !lOk) {
+    return {
+      ok: false,
+      message: "Les colonnes vont de " + MINI_CASES + " à " + maxiColonnes +
+               ", les lignes de " + MINI_CASES + " à " + maxiLignes + ".",
+      champ: cOk ? "lignes" : "colonnes",
+    };
+  }
+  const maxiPieces = Math.min(PIECES_MAXI, c * l - 1);       // jamais sur la case de départ
+  const n = lireEntier(brut.pieces);
+  if (n === null || n > maxiPieces) {
+    return { ok: false, message: "Les pièces vont de 0 à " + maxiPieces + ".", champ: "pieces" };
+  }
+  return {
+    ok: true,
+    reglages: {
+      taille: t, colonnes: c, lignes: l, pieces: n,
+      niveau: brut.niveau, couleur: brut.couleur, personnage: brut.personnage, trace: Boolean(brut.trace),
+    },
+  };
+}
+
+function normaliserReglages(brut, largeurFenetre, hauteurFenetre) {
+  // Réglages relus du localStorage (ou n'importe quoi d'autre) : on garde ce qui est valide,
+  // et on remet la valeur par défaut pour le reste. Les colonnes et lignes sont ramenées au maximum
+  // de la fenêtre actuelle, comme la V2 au lancement. Ne plante jamais, même si « brut » est absurde.
+  const d = REGLAGES_PAR_DEFAUT;
+  const source = (brut !== null && typeof brut === "object") ? brut : {};
+  const entierDans = (valeur, mini, maxi, defaut) =>
+    (Number.isInteger(valeur) && valeur >= mini && valeur <= maxi) ? valeur : defaut;
+  const taille = entierDans(source.taille, TAILLE_MINI, TAILLE_MAXI, d.taille);
+  const { maxiColonnes, maxiLignes } = limitesDamier(taille, largeurFenetre, hauteurFenetre);
+  const colonnes = Math.min(entierDans(source.colonnes, MINI_CASES, 100000, d.colonnes), maxiColonnes);
+  const lignes = Math.min(entierDans(source.lignes, MINI_CASES, 100000, d.lignes), maxiLignes);
+  const pieces = entierDans(source.pieces, 0, Math.min(PIECES_MAXI, colonnes * lignes - 1), Math.min(d.pieces, colonnes * lignes - 1));
+  return {
+    taille, colonnes, lignes, pieces,
+    niveau: Object.hasOwn(NIVEAUX, source.niveau) ? source.niveau : d.niveau,
+    couleur: COULEURS_NOMS.includes(source.couleur) ? source.couleur : d.couleur,
+    personnage: PERSONNAGES.includes(source.personnage) ? source.personnage : d.personnage,
+    trace: typeof source.trace === "boolean" ? source.trace : d.trace,
+  };
+}
+
+
+// ---------- Portes et déplacements ----------
+
+function placerPortes(colonnes, lignes, hasard) {
+  // Place une porte au hasard le long de chacun des 4 murs : renvoie, pour chaque mur,
+  // le numéro de la première case de sa porte.
+  const portes = {};
+  for (const mur of Object.keys(DIRECTIONS)) {
+    const longueur = (mur === "left" || mur === "right") ? lignes : colonnes;
+    portes[mur] = hasard.entier(0, longueur - largeurPorte(colonnes, lignes, mur));
+  }
+  return portes;
+}
+
+function caseSuivante(damier, c, l, direction) {
+  // Case où l'on arrive en partant de (c, l) vers « direction », en passant par les portes.
+  // Renvoie [colonne, ligne], ou null si on cogne le mur extérieur. (Ne regarde pas les murs intérieurs.)
+  // « damier » = { colonnes, lignes, portes }.
+  const { colonnes, lignes, portes } = damier;
+  const [dx, dy] = DIRECTIONS[direction];
+  if (c + dx >= 0 && c + dx < colonnes && l + dy >= 0 && l + dy < lignes) {
+    return [c + dx, l + dy];                                    // on reste dans le damier
+  }
+  const place = (dx !== 0 ? l : c) - portes[direction];         // sa place le long de la porte de ce mur
+  if (!(place >= 0 && place < largeurPorte(colonnes, lignes, direction))) {
+    return null;                                                // pas devant la porte : c'est le mur
+  }
+  if (direction === "left") return [colonnes - 1, portes.right + place];   // devant la porte : on ressort en face
+  if (direction === "right") return [0, portes.left + place];
+  if (direction === "up") return [portes.down + place, lignes - 1];
+  return [portes.up + place, 0];
+}
+
+function toutAccessible(damier, depart, casesMur) {
+  // Vrai si, avec ces murs (un Set de cases), on peut aller sur toutes les cases libres depuis le départ.
+  // On explore le damier « en tache d'huile » à partir du départ (parcours en largeur), portes comprises.
+  const vues = new Set([cle(depart[0], depart[1])]);
+  const aExplorer = [depart];
+  while (aExplorer.length > 0) {
+    const [c, l] = aExplorer.pop();
+    for (const direction of Object.keys(DIRECTIONS)) {
+      const voisine = caseSuivante(damier, c, l, direction);
+      if (voisine !== null) {
+        const k = cle(voisine[0], voisine[1]);
+        if (!casesMur.has(k) && !vues.has(k)) {
+          vues.add(k);
+          aExplorer.push(voisine);
+        }
+      }
+    }
+  }
+  return vues.size === damier.colonnes * damier.lignes - casesMur.size;
+}
+
+
+// ---------- Murs intérieurs ----------
+
+function placerMurs(damier, depart, niveau, hasard) {
+  // Pose des segments de mur au hasard, jusqu'à couvrir la part du damier fixée par la difficulté.
+  // Règles : départ et ses 8 voisines dégagés, cases devant les portes dégagées, une case libre au moins
+  // (diagonales comprises) entre deux segments, et toutes les cases libres restent accessibles.
+  // Renvoie un Set de cases.
+  const { colonnes, lignes, portes } = damier;
+  const murs = new Set();
+  const cible = arrondiPython(NIVEAUX[niveau] * colonnes * lignes);   // nombre de cases de mur visé
+
+  const interdites = new Set();                                // autour du départ
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) interdites.add(cle(depart[0] + i, depart[1] + j));
+  }
+  for (const mur of Object.keys(DIRECTIONS)) {                 // devant les portes
+    for (let k = portes[mur]; k < portes[mur] + largeurPorte(colonnes, lignes, mur); k++) {
+      if (mur === "left") interdites.add(cle(0, k));
+      else if (mur === "right") interdites.add(cle(colonnes - 1, k));
+      else if (mur === "up") interdites.add(cle(k, 0));
+      else interdites.add(cle(k, lignes - 1));
+    }
+  }
+
+  let essais = 0;
+  while (murs.size < cible && essais < 300 + cible) {          // on abandonne si ça ne tient plus
+    essais += 1;
+    const horizontal = hasard.choix([true, false]);
+    const cote = horizontal ? colonnes : lignes;
+    const longueur = hasard.entier(2, Math.max(2, Math.trunc(cote * MUR_LONGUEUR_PART)));
+    if (longueur > cote) continue;
+    const c0 = hasard.entier(0, colonnes - (horizontal ? longueur : 1));
+    const l0 = hasard.entier(0, lignes - (horizontal ? 1 : longueur));
+    const segment = [];
+    for (let i = 0; i < longueur; i++) segment.push(horizontal ? [c0 + i, l0] : [c0, l0 + i]);
+
+    if (segment.some(([c, l]) => interdites.has(cle(c, l)))) continue;
+    // Une case du segment, ou l'une de ses 8 voisines, est déjà un mur : trop près.
+    const tropPres = segment.some(([c, l]) => {
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) if (murs.has(cle(c + i, l + j))) return true;
+      }
+      return false;
+    });
+    if (tropPres) continue;
+    // Un segment entouré de cases libres ne peut rien enfermer, sauf s'il s'appuie sur le bord :
+    // c'est seulement dans ce cas qu'on fait la vérification complète (plus lente).
+    const toucheLeBord = segment.some(([c, l]) => c === 0 || c === colonnes - 1 || l === 0 || l === lignes - 1);
+    if (toucheLeBord) {
+      const avecSegment = new Set(murs);
+      for (const [c, l] of segment) avecSegment.add(cle(c, l));
+      if (!toutAccessible(damier, depart, avecSegment)) continue;
+    }
+    for (const [c, l] of segment) murs.add(cle(c, l));
+  }
+  return murs;
+}
+
+
+// ---------- Pièces et minimum de pas ----------
+
+function placerTresors(damier, depart, murs, nbPieces, hasard) {
+  // Pose les pièces au hasard, chacune sur une case libre différente, jamais sur la case de départ.
+  // Renvoie un Set de cases.
+  const libres = [];
+  for (let c = 0; c < damier.colonnes; c++) {
+    for (let l = 0; l < damier.lignes; l++) {
+      const k = cle(c, l);
+      if (!(c === depart[0] && l === depart[1]) && !murs.has(k)) libres.push(k);
+    }
+  }
+  return new Set(hasard.echantillon(libres, Math.min(nbPieces, libres.length)));
+}
+
+function distancesDepuis(damier, murs, depart) {
+  // Nombre minimum de pas pour aller de « depart » à chaque case libre, murs et portes compris.
+  // Parcours en largeur : d'abord les cases à 1 pas, puis à 2 pas, etc. Renvoie un Map case → distance.
+  const distances = new Map([[cle(depart[0], depart[1]), 0]]);
+  const aExplorer = [depart];
+  for (let i = 0; i < aExplorer.length; i++) {          // la liste grandit pendant qu'on la parcourt
+    const [c, l] = aExplorer[i];
+    const d = distances.get(cle(c, l));
+    for (const direction of Object.keys(DIRECTIONS)) {
+      const voisine = caseSuivante(damier, c, l, direction);
+      if (voisine !== null) {
+        const k = cle(voisine[0], voisine[1]);
+        if (!murs.has(k) && !distances.has(k)) {
+          distances.set(k, d + 1);
+          aExplorer.push(voisine);
+        }
+      }
+    }
+  }
+  return distances;
+}
+
+function calculerMinimum(damier, murs, depart, tresors) {
+  // Nombre minimum de pas pour prendre toutes les pièces (un Set de cases), dans le meilleur ordre ;
+  // null s'il n'y a aucune pièce.
+  // 1. On mesure la distance (en pas) entre le départ et chaque pièce, et entre les pièces.
+  // 2. On cherche le meilleur ordre de ramassage par programmation dynamique (algorithme de Held-Karp) :
+  //    meilleur[groupe][j] = pas minimum pour prendre les pièces de « groupe » (un nombre dont chaque bit
+  //    dit si la pièce est prise) en finissant par la pièce j. Environ 2^n × n² calculs : 0,1 s pour 10 pièces.
+  const pieces = [...tresors].map(decoder);             // [...Set] : le Set devient une liste
+  const n = pieces.length;
+  if (n === 0) return null;
+  const pointsCles = [depart, ...pieces];               // le départ, puis les pièces
+  const tables = pointsCles.map((p) => distancesDepuis(damier, murs, p));
+  const d = pointsCles.map((_, i) => pointsCles.map((q) => {
+    const k = cle(q[0], q[1]);
+    return tables[i].has(k) ? tables[i].get(k) : Infinity;
+  }));
+  const meilleur = Array.from({ length: 1 << n }, () => new Array(n).fill(Infinity));   // 1 << n = 2^n
+  for (let j = 0; j < n; j++) meilleur[1 << j][j] = d[0][j + 1];
+  for (let groupe = 1; groupe < (1 << n); groupe++) {
+    for (let j = 0; j < n; j++) {
+      if (meilleur[groupe][j] === Infinity || (groupe & (1 << j)) === 0) continue;
+      for (let k = 0; k < n; k++) {                      // pièce suivante : k
+        if ((groupe & (1 << k)) === 0) {
+          const suivant = groupe | (1 << k);
+          const essai = meilleur[groupe][j] + d[j + 1][k + 1];
+          if (essai < meilleur[suivant][k]) meilleur[suivant][k] = essai;
+        }
+      }
+    }
+  }
+  return Math.min(...meilleur[(1 << n) - 1]);
+}
+
+
+// ---------- Lecture des commandes ----------
+
+// Les morceaux qu'on sait reconnaître dans une commande, essayés dans cet ordre :
+//   1. « repeat 4 ( »  : début d'une boucle (le nombre et la parenthèse sont vérifiés après)
+//   2. « ) »           : fin de la boucle
+//   3. « left », « left 3 », « left(3) », « left (3) », « left3 » : un mouvement (ou « take »)
+//   4. n'importe quoi d'autre : une erreur
+// Drapeau « g » : on cherche tous les morceaux ; « i » : majuscules et minuscules sont équivalentes.
+const MORCEAUX = /(repeat)(?![a-z])\s*(\d*)\s*(\(?)|(\))|([a-z]+)\s*(?:\(\s*(\d+)\s*\)|(\d*))|(\S+)/gi;
+
+function estFin(texte) {
+  // Vrai si la ligne contient le mot « end » (seul, entouré d'espaces, de virgules ou de points-virgules).
+  return texte.replace(/[,;]/g, " ").toLowerCase().split(/\s+/).includes("end");
+}
+
+function lireCommandes(texteBrut) {
+  // Transforme « left 3 take repeat 2 (up right) » en une liste d'actions :
+  // left, left, left, take, up, right, up, right.
+  // Renvoie { actions, mouvements, erreurs, ordres } :
+  //  - actions : une entrée par pas ou par take : { mot, debut, fin, bloc? }.
+  //    « debut » et « fin » sont les positions de l'instruction dans le texte tapé (pour la surbrillance) ;
+  //    « bloc » (seulement dans une boucle) : { debut, fin, tour, fois } = position du « repeat … ) » entier,
+  //    numéro du tour en cours et nombre de tours.
+  //  - mouvements : les mêmes mots, sans les positions (ce que renvoyait la V2) ;
+  //  - erreurs : les messages (la ligne est refusée dès qu'il y en a un) ;
+  //  - ordres : nombre d'instructions écrites. Chaque mouvement compte 1 (« left 3 » aussi), chaque take 1,
+  //    chaque repeat 1 ; ce qu'il y a dans un repeat n'est compté qu'une fois.
+  // Écart voulu avec la V2 : la virgule ET le point-virgule valent un espace (remplacés caractère pour
+  // caractère, donc les positions restent justes).
+  const texte = texteBrut.replace(/[,;]/g, " ");
+  const actions = [];
+  const erreurs = [];
+  let ordres = 0;
+  let boucle = null;          // pendant une boucle : les actions à répéter ; sinon null
+  let foisBoucle = 0;         // combien de fois répéter la boucle en cours
+  let debutBoucle = 0;        // position du mot « repeat » de la boucle en cours
+  let aIgnorer = 0;           // « ) » d'un repeat déjà signalé comme erreur : on ne la signale pas deux fois
+  let total = 0n;             // nombre de pas, compté à part. Le « n » final : entier de taille illimitée (BigInt),
+  let totalBoucle = 0n;       // pour afficher le vrai nombre même si on tape « left 99999999999999999999 ».
+  const plafond = MAXIMUM + 1;  // on ne fabrique jamais plus de pas que ça d'un coup : « left 99999999 »
+                                // ferait une liste géante, alors qu'il suffit de savoir que c'est trop
+
+  for (const m of texte.matchAll(MORCEAUX)) {
+    const repeat = m[1] || "";
+    const nombreR = m[2] || "";
+    const ouvre = m[3] || "";
+    const ferme = m[4] || "";
+    const mot = (m[5] || "").toLowerCase();
+    const nombreP = m[6] || "";       // nombre entre parenthèses : left(3)
+    const nombre = m[7] || "";        // nombre collé ou séparé : left 3
+    const autre = (m[8] || "").toLowerCase();
+    const debut = m.index;
+    const fin = debut + m[0].trimEnd().length;
+
+    if (repeat) {                                       // début d'une boucle
+      if (boucle !== null) {
+        erreurs.push("pas de repeat dans un repeat");
+        aIgnorer += ouvre ? 1 : 0;
+      } else if (!ouvre && !nombreR) {
+        erreurs.push("repeat a besoin d'un nombre et de parenthèses : repeat 4 (…)");
+      } else if (!ouvre) {
+        erreurs.push("il manque « ( » après repeat " + nombreR);
+      } else {
+        if (!nombreR) erreurs.push("repeat a besoin d'un nombre : repeat 4 (…)");
+        boucle = [];
+        foisBoucle = nombreR ? BigInt(nombreR) : 0n;
+        debutBoucle = debut;
+        totalBoucle = 0n;
+        ordres += 1;
+      }
+    } else if (ferme) {                                 // fin de la boucle : on la répète
+      if (aIgnorer > 0) {
+        aIgnorer -= 1;
+      } else if (boucle === null) {
+        erreurs.push("une « ) » en trop");
+      } else {
+        const tours = foisBoucle > BigInt(plafond) ? plafond : Number(foisBoucle);
+        for (let tour = 1; tour <= tours; tour++) {
+          for (const a of boucle) {
+            actions.push({ ...a, bloc: { debut: debutBoucle, fin: fin, tour: tour, fois: Number(foisBoucle) } });
+          }
+        }
+        total += totalBoucle * foisBoucle;
+        boucle = null;
+      }
+    } else if (mot === PRENDRE) {                       // prendre une pièce (ce n'est pas un pas : pas dans total)
+      if (nombreP || nombre) erreurs.push(PRENDRE + " s'écrit sans nombre");
+      ordres += 1;
+      (boucle !== null ? boucle : actions).push({ mot: PRENDRE, debut, fin });
+    } else if (Object.hasOwn(DIRECTIONS, mot)) {        // un mouvement, peut-être répété
+      const n = nombreP || nombre;
+      const fois = n ? BigInt(n) : 1n;
+      ordres += 1;
+      const nombreDeCopies = fois > BigInt(plafond) ? plafond : Number(fois);
+      const suite = [];
+      for (let i = 0; i < nombreDeCopies; i++) suite.push({ mot, debut, fin });
+      if (boucle !== null) {
+        boucle.push(...suite);                          // dans une boucle : on le garde pour plus tard
+        totalBoucle += fois;
+      } else {
+        actions.push(...suite);
+        total += fois;
+      }
+    } else {
+      erreurs.push("je ne connais pas « " + (autre || mot) + " »");
+    }
+  }
+  if (boucle !== null) erreurs.push("il manque « ) » à la fin du repeat");
+  if (total > BigInt(MAXIMUM)) erreurs.push("trop de pas : " + total + " (maximum " + MAXIMUM + ")");
+  return { actions, mouvements: actions.map((a) => a.mot), erreurs, ordres };
+}
+
+
+// ---------- Partie : état et règles du jeu ----------
+// L'état d'une partie est un objet : { damier, murs, tresors, depart, x, y, nbPieces, ramasses, points,
+// instructions, pas, minimum }. Aucune fonction ne le modifie : chacune en renvoie une copie mise à jour.
+
+function creerEtat(damier, murs, tresors, depart, nbPieces) {
+  // État de début de partie pour un damier donné (utile aussi pour les tests : on fixe le damier à la main).
+  return {
+    damier, murs, tresors, depart,
+    x: depart[0], y: depart[1],
+    nbPieces, ramasses: 0, points: 0, instructions: 0, pas: 0,
+    minimum: calculerMinimum(damier, murs, depart, tresors),
+  };
+}
+
+function nouvellePartie(reglages, hasard) {
+  // Damier neuf : portes, murs et pièces au hasard, personnage au milieu (avec un nombre pair de cases,
+  // juste à droite et en dessous du centre), compteurs à zéro, minimum de pas calculé.
+  const { colonnes, lignes, niveau, pieces } = reglages;
+  const depart = [Math.floor(colonnes / 2), Math.floor(lignes / 2)];
+  const portes = placerPortes(colonnes, lignes, hasard);
+  const damier = { colonnes, lignes, portes };
+  const murs = placerMurs(damier, depart, niveau, hasard);
+  const tresors = placerTresors(damier, depart, murs, pieces, hasard);
+  return creerEtat(damier, murs, tresors, depart, pieces);
+}
+
+function gagne(etat) {
+  // Vrai quand il y avait des pièces et qu'elles sont toutes ramassées.
+  return etat.nbPieces > 0 && etat.tresors.size === 0;
+}
+
+function ajouterInstructions(etat, n) {
+  return { ...etat, instructions: etat.instructions + n };
+}
+
+function avancer(etat, direction) {
+  // Un pas dans « direction ». Renvoie { etat, evenement, continuer }.
+  //  - Case libre (dans le damier, ou de l'autre côté d'une porte) : le personnage y va.
+  //    evenement = { type: "pas", direction, de, vers, porte } (porte = vrai si on a franchi une porte).
+  //  - Mur (extérieur ou intérieur) : il cogne, puis rebondit d'une case vers l'arrière ; si la case de
+  //    derrière est aussi bloquée (mur ou bord), il reste sur place. Le pas qui cogne compte quand même.
+  //    evenement = { type: "choc", direction, de, contre ("brique" ou "mur"), cible (la case heurtée),
+  //    rebond (case finale), rebondit }. continuer = faux : la suite de la ligne est abandonnée.
+  const { damier, murs, x, y } = etat;
+  const [dx, dy] = DIRECTIONS[direction];
+  const pas = etat.pas + 1;                                        // même un pas qui rebondit compte
+  const arrivee = caseSuivante(damier, x, y, direction);
+  if (arrivee !== null && !murs.has(cle(arrivee[0], arrivee[1]))) {
+    return {
+      etat: { ...etat, x: arrivee[0], y: arrivee[1], pas },
+      evenement: {
+        type: "pas", direction, de: [x, y], vers: arrivee,
+        porte: Math.abs(arrivee[0] - x) + Math.abs(arrivee[1] - y) !== 1,
+      },
+      continuer: true,
+    };
+  }
+  const cible = [x + dx, y + dy];
+  const arriere = [x - dx, y - dy];
+  const rebondit = arriere[0] >= 0 && arriere[0] < damier.colonnes &&
+                   arriere[1] >= 0 && arriere[1] < damier.lignes &&
+                   !murs.has(cle(arriere[0], arriere[1]));
+  const rebond = rebondit ? arriere : [x, y];
+  return {
+    etat: { ...etat, x: rebond[0], y: rebond[1], pas },
+    evenement: {
+      type: "choc", direction, de: [x, y],
+      contre: murs.has(cle(cible[0], cible[1])) ? "brique" : "mur",
+      cible, rebond, rebondit,
+    },
+    continuer: false,
+  };
+}
+
+function ramasser(etat) {
+  // Instruction « take » : s'il y a une pièce sur la case du personnage, il la prend ; sinon rien ne se passe
+  // (mais l'instruction a quand même été comptée). Ce n'est pas un pas.
+  // evenement = { type: "prise", case, points, derniere } ou { type: "take-vide" }.
+  // continuer = faux après la dernière pièce : la commande s'arrête.
+  const k = cle(etat.x, etat.y);
+  if (!etat.tresors.has(k)) {
+    return { etat, evenement: { type: "take-vide" }, continuer: true };
+  }
+  const tresors = new Set(etat.tresors);
+  tresors.delete(k);
+  const apres = { ...etat, tresors, ramasses: etat.ramasses + 1, points: etat.points + 1 };
+  return {
+    etat: apres,
+    evenement: { type: "prise", case: [etat.x, etat.y], points: 1, derniere: gagne(apres) },
+    continuer: !gagne(apres),
+  };
+}
+
+function jouerAction(etat, action) {
+  // Joue UNE action de la liste (un pas ou un take). L'affichage appelle cette fonction toutes les
+  // VITESSE millisecondes, en repartant à chaque fois de l'état courant : si le joueur appuie sur une
+  // flèche entre deux actions, le pas de la flèche s'intercale, comme dans la V2.
+  const resultat = action.mot === PRENDRE ? ramasser(etat) : avancer(etat, action.mot);
+  resultat.evenement.action = action;                  // pour surligner l'instruction en cours
+  return resultat;
+}
+
+function jouerLigne(etat, actions) {
+  // Joue toute la liste d'un coup (sans pause), jusqu'à un choc ou à la dernière pièce.
+  // Renvoie { etat, evenements }. Sert aux tests ; à l'écran, on passe par jouerAction.
+  const evenements = [];
+  for (const action of actions) {
+    const r = jouerAction(etat, action);
+    etat = r.etat;
+    evenements.push(r.evenement);
+    if (!r.continuer) break;
+  }
+  return { etat, evenements };
+}
+
+function jouerFleche(etat, direction) {
+  // Appui sur une flèche du clavier : un pas immédiat, qui compte 1 instruction. Ignoré après la victoire.
+  // Renvoie { etat, evenement, continuer } (evenement = null si ignoré).
+  if (gagne(etat)) return { etat, evenement: null, continuer: false };
+  return avancer(ajouterInstructions(etat, 1), direction);
+}
+
+function accepterLigne(etat, texte) {
+  // Ce qui se passe quand on valide une ligne tapée (équivaut à valider() de la V2, sans l'affichage).
+  // Renvoie { fin, ignoree, refusee, message, etat, actions } :
+  //  - fin : la ligne contient « end » (l'affichage revient au menu) ;
+  //  - ignoree : la partie est gagnée, on attend « end » ;
+  //  - refusee : au moins une erreur ; « message » est le texte à afficher (« Oups : … ») et rien ne bouge ;
+  //  - sinon : « etat » a les instructions de la ligne en plus, « actions » est la liste à jouer.
+  if (estFin(texte)) return { fin: true, ignoree: false, refusee: false, message: "", etat, actions: [] };
+  if (gagne(etat)) return { fin: false, ignoree: true, refusee: false, message: "", etat, actions: [] };
+  const { actions, erreurs, ordres } = lireCommandes(texte);
+  if (erreurs.length > 0) {
+    return { fin: false, ignoree: false, refusee: true, message: "Oups : " + erreurs.join(" ; "), etat, actions: [] };
+  }
+  return { fin: false, ignoree: false, refusee: false, message: "", etat: ajouterInstructions(etat, ordres), actions };
+}
+
+
+// ---------- Textes affichés par la logique ----------
+
+function texteCompteur(etat) {
+  // « Pièces 2/5 · Instructions 7 · Pas 37 · minimum 30 ». Avec 0 pièce : « Instructions 7 · Pas 37 ».
+  let texte = "Instructions " + etat.instructions + "  ·  Pas " + etat.pas;
+  if (etat.minimum !== null) texte += "  ·  minimum " + etat.minimum;
+  if (etat.nbPieces > 0) texte = "Pièces " + etat.ramasses + "/" + etat.nbPieces + "  ·  " + texte;
+  return texte;
+}
+
+function resumeVictoire(etat) {
+  // Textes du panneau « Bravo ! ». Écart voulu avec la V2 : « 1 instruction » au singulier.
+  const pluriel = (n, mot) => n + " " + mot + (n > 1 ? "s" : "");
+  const estMinimum = etat.pas === etat.minimum;
+  return {
+    titre: "Bravo !",
+    detail: pluriel(etat.nbPieces, "pièce") + "  ·  " + pluriel(etat.instructions, "instruction") + "  ·  " + etat.pas + " pas",
+    estMinimum,
+    comparaison: estMinimum ? "C'est le minimum !" : "Minimum possible : " + etat.minimum + " pas",
+    rejouer: "Tape « end » pour rejouer",
+  };
+}
+</script>
+
+<script id="affichage">
+// =====================================================================================
+//  AFFICHAGE — tout ce qui touche la page : menu, dessin, animations, clavier, localStorage.
+//  Ce bloc n'appelle que les fonctions du bloc « logique » (au-dessus) et ne décide d'aucune règle.
+//  Le plateau est dessiné sur deux <canvas> superposés :
+//   - « plateau » : le décor fixe (cases, murs, portes, trace), dessiné une fois par partie ;
+//   - « effets »  : tout ce qui bouge (pièces, personnage, « Boum ! », « +1 », panneau Bravo, confettis),
+//                   redessiné à chaque image (requestAnimationFrame, environ 60 fois par seconde).
+//  Toutes les animations sont calculées à partir de l'heure (performance.now()), pas image par image.
+// =====================================================================================
+
+
+// ---------- Réglages d'affichage ----------
+
+const CLE_STOCKAGE = "robot-web-v2-reglages" + (location.pathname.includes("/test/") ? "-test" : "");   // clé du localStorage (suffixe -test sur l'adresse /test/)
+const DUREE_PAS = 200;          // durée de l'animation d'un pas (ms), à l'intérieur des VITESSE (250 ms) entre deux actions
+const DUREE_CHOC = 400;         // animation du choc : demi-pas (1/4), puis secousses (3/4), en ms — comme la V2
+const SECOUSSES = [0.12, -0.12, 0.08, -0.08, 0.04, 0];   // le personnage tremble après le choc : décalages, en cases
+const DUREE_TEXTE = 1000;       // combien de temps « Boum ! » et « +1 » restent écrits (ms)
+const DUREE_PRISE = 400;        // la pièce prise grossit et s'envole (ms)
+const DELAI_BRAVO = 450;        // pause entre la dernière pièce et le panneau Bravo (ms)
+const DUREE_COMPTEUR_OR = 600;  // le compteur reste doré après une prise (ms)
+const EPAISSEUR_MUR = 8;        // épaisseur du mur dessiné autour du damier (pixels) ; doit rester inférieure à la marge
+const SURPLUS_VERTICAL = 20;    // hauteur de cette mise en page moins les 220 pixels réservés par la logique
+const POLICE = 'ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+
+// Chaque couleur a 4 teintes : principale, claire, foncée, et celle de la trace
+const COULEURS = {
+  bleu:   ["#3b82c4", "#5a9bd5", "#24527d", "#bcd6ef"],
+  rouge:  ["#d9483b", "#e8766b", "#8e2a21", "#f3c4bf"],
+  vert:   ["#3e9b4f", "#66b875", "#24602f", "#c3e5c9"],
+  violet: ["#8b5cc4", "#a785d6", "#56367d", "#dccbf0"],
+  orange: ["#e8892b", "#f0a85e", "#9a5410", "#f8d6b3"],
+  rose:   ["#e05a9c", "#ec86b8", "#962e62", "#f5c6dd"],
+};
+const MUR = "#5b4a3a";                       // mur brun (extérieur et briques)
+const PORTE = "#d9a35f";                     // porte en bois…
+const CADRE = "#7a4a1c";                     // … et son cadre
+const CHOC = "#e74c3c";                      // mur heurté
+const OR = "#d4a017";                        // pièce prise, compteur doré
+const VERT = "#1e8449";                      // victoire
+
+// Les pastilles d'aide sous la saisie. « insere » : ce qu'un clic écrit dans la saisie ;
+// « nombre » : on sélectionne le nombre pour pouvoir le remplacer ; « curseur » : décalage du curseur.
+const AIDE = [
+  { texte: "left 3", insere: "left 3", nombre: true },
+  { texte: "right", insere: "right" },
+  { texte: "up", insere: "up" },
+  { texte: "down", insere: "down" },
+  null,                                       // null = séparateur « · »
+  { texte: "take", insere: "take" },
+  null,
+  { texte: "repeat 4 ( … )", insere: "repeat 4 ()", curseur: -1 },
+  null,
+  { texte: "end", insere: "end" },
+];
+const AIDE_DETAIL = "Tape tes instructions puis Entrée  ·  flèches : un pas  ·  clique une pastille pour l'insérer  ·  take prend la pièce sous le personnage";
+const FLECHES = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+const sansAnimation = window.matchMedia("(prefers-reduced-motion: reduce)").matches;   // réglage du Mac « réduire les animations »
+
+
+// ---------- Éléments de la page ----------
+
+const $ = (id) => document.getElementById(id);
+const ecranConfig = $("ecran-config");
+const ecranJeu = $("ecran-jeu");
+const ecranAdieu = $("ecran-adieu");
+const champTaille = $("champ-taille");
+const champColonnes = $("champ-colonnes");
+const champLignes = $("champ-lignes");
+const champPieces = $("champ-pieces");
+const champTrace = $("champ-trace");
+const texteColonnes = $("texte-colonnes");
+const texteLignes = $("texte-lignes");
+const erreurConfig = $("erreur-config");
+const zoneNiveaux = $("niveaux");
+const zoneCouleurs = $("couleurs");
+const zonePersos = $("personnages");
+const mascotte = $("mascotte");
+const boutonGo = $("bouton-go");
+const boutonExit = $("bouton-exit");
+const compteur = $("compteur");
+const cadre = $("plateau-cadre");
+const toilePlateau = $("plateau");
+const toileEffets = $("effets");
+const bas = $("bas");
+const saisie = $("saisie");
+const formulaire = $("formulaire-ligne");
+const bande = $("bande");
+const message = $("message");
+const aide = $("aide");
+const annonce = $("annonce");
+
+
+// ---------- État de l'affichage ----------
+// (l'état du jeu lui-même, lui, est dans « etat » et ne change que par les fonctions de la logique)
+
+let reglages = { ...REGLAGES_PAR_DEFAUT };  // réglages du menu (valeurs valides)
+let reglagesPartie = reglages;              // réglages figés au lancement de la partie en cours
+let hasardJeu = hasardNavigateur;           // le hasard du jeu (reproductible avec ?graine=12 dans l'adresse)
+let etat = null;                            // état de la partie (logique)
+let enJeu = false;                          // vrai pendant une partie
+let numeroPartie = 0;                       // change à chaque partie : les actions différées d'une ancienne partie s'annulent
+let minuteur = null;                        // prochaine action programmée (setTimeout)
+let ligneEnCours = null;                    // { texte, actions } : la ligne en cours d'exécution (pour la surbrillance)
+let mouvement = null;                       // animation du personnage en cours (pas ou choc)
+let effets = [];                            // effets temporaires : textes, pièce qui s'envole, mur rouge, panneau Bravo
+let particules = [];                        // poussière, étincelles, confettis
+let casesTracees = new Set();               // cases déjà coloriées par la trace
+let geo = null;                             // dimensions du damier à l'écran
+let ctxPlateau = null;
+let ctxEffets = null;
+let boucleImage = null;                     // identifiant de la boucle d'animation
+let aRedessiner = true;                     // quelque chose a changé : il faut redessiner
+let etaitActif = false;
+let minuteurOr = null;
+
+
+// ---------- Petits outils de dessin ----------
+
+function rectArrondi(ctx, x, y, l, h, r) {
+  // Trace (sans la remplir) un rectangle aux coins arrondis.
+  const rayon = Math.max(0, Math.min(r, l / 2, h / 2));
+  ctx.moveTo(x + rayon, y);
+  ctx.arcTo(x + l, y, x + l, y + h, rayon);
+  ctx.arcTo(x + l, y + h, x, y + h, rayon);
+  ctx.arcTo(x, y + h, x, y, rayon);
+  ctx.arcTo(x, y, x + l, y, rayon);
+  ctx.closePath();
+}
+
+// Courbes de mouvement : p va de 0 à 1 ; le résultat aussi (mais pas à vitesse constante).
+const facilite = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);   // démarre et finit doucement
+const freinage = (p) => 1 - (1 - p) * (1 - p);                                     // part vite, finit doucement
+const rebondi = (p) => 1 + 2.70158 * Math.pow(p - 1, 3) + 1.70158 * Math.pow(p - 1, 2);   // dépasse un peu, puis revient
+
+function preparerToile(toile, largeur, hauteur) {
+  // Règle la taille d'un canvas pour qu'il soit net sur un écran Retina, et renvoie son « pinceau ».
+  const dpr = window.devicePixelRatio || 1;
+  toile.width = Math.round(largeur * dpr);
+  toile.height = Math.round(hauteur * dpr);
+  toile.style.width = largeur + "px";
+  toile.style.height = hauteur + "px";
+  const ctx = toile.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);       // on dessine ensuite en pixels « de page »
+  return ctx;
+}
+
+function policeAjustee(ctx, texte, taille, largeurMax) {
+  // Réduit la taille d'un texte jusqu'à ce qu'il tienne dans la largeur donnée.
+  let t = taille;
+  ctx.font = "800 " + t + "px " + POLICE;
+  while (t > 7 && ctx.measureText(texte).width > largeurMax) {
+    t -= 1;
+    ctx.font = "800 " + t + "px " + POLICE;
+  }
+}
+
+
+// ============================ Les personnages ============================
+// Chaque dessin est fait dans un carré de 60 × 60, puis agrandi ou réduit (mêmes formes que la V2).
+
+function dessinerPersonnage(ctx, nom, g, h, t, teintes) {
+  // Dessine le personnage « nom », coin en haut à gauche (g, h), échelle t (1 = 60 pixels).
+  const [principale, claire, foncee] = teintes;
+  ctx.save();
+  ctx.translate(g, h);
+  ctx.scale(t, t);                       // à partir d'ici, on dessine dans le carré de 60
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  const finir = (remplissage, contour, epaisseur) => {
+    if (remplissage) { ctx.fillStyle = remplissage; ctx.fill(); }
+    if (contour) { ctx.lineWidth = epaisseur || 2; ctx.strokeStyle = contour; ctx.stroke(); }
+  };
+  const rect = (x1, y1, x2, y2, remplissage, contour, epaisseur, rayon) => {
+    ctx.beginPath(); rectArrondi(ctx, x1, y1, x2 - x1, y2 - y1, rayon || 0); finir(remplissage, contour, epaisseur);
+  };
+  const ovale = (x1, y1, x2, y2, remplissage, contour, epaisseur) => {
+    ctx.beginPath();
+    ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) / 2, (y2 - y1) / 2, 0, 0, Math.PI * 2);
+    finir(remplissage, contour, epaisseur);
+  };
+  const poly = (points, remplissage, contour, epaisseur) => {      // points = [x1, y1, x2, y2, …]
+    ctx.beginPath();
+    ctx.moveTo(points[0], points[1]);
+    for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
+    ctx.closePath();
+    finir(remplissage, contour, epaisseur);
+  };
+  const ligne = (points, couleur, epaisseur) => {
+    ctx.beginPath();
+    ctx.moveTo(points[0], points[1]);
+    for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
+    ctx.lineWidth = epaisseur;
+    ctx.strokeStyle = couleur;
+    ctx.stroke();
+  };
+  const reflet = (x1, y1, x2, y2, rayon) => rect(x1, y1, x2, y2, "rgba(255,255,255,0.22)", null, 0, rayon);
+
+  if (nom === "robot") {
+    ligne([30, 6, 30, 14], "#555", 2);                                 // antenne
+    ovale(26, 2, 34, 10, "#e74c3c");                                   // boule rouge
+    rect(14, 14, 46, 36, principale, foncee, 2, 4);                    // tête
+    reflet(16, 15.5, 44, 23, 3);
+    ovale(20, 19, 28, 27, "#fff");                                     // yeux
+    ovale(32, 19, 40, 27, "#fff");
+    ovale(23, 22, 26, 25, "#000");
+    ovale(35, 22, 38, 25, "#000");
+    rect(24, 30, 36, 32, foncee);                                      // bouche
+    rect(18, 38, 42, 54, claire, foncee, 2, 4);                        // corps
+    reflet(20, 39.5, 40, 45, 2);
+    ovale(27, 42, 33, 48, "#f1c40f");                                  // bouton
+  } else if (nom === "chat") {
+    poly([13, 26, 15, 6, 29, 16], principale, foncee, 2);              // oreilles
+    poly([47, 26, 45, 6, 31, 16], principale, foncee, 2);
+    poly([17, 20, 18, 11, 25, 16], "#f5b7c8");
+    poly([43, 20, 42, 11, 35, 16], "#f5b7c8");
+    ovale(10, 12, 50, 50, principale, foncee, 2);                      // tête
+    ovale(16, 14, 44, 26, "rgba(255,255,255,0.18)");
+    ovale(18, 24, 28, 34, "#fff");                                     // yeux
+    ovale(32, 24, 42, 34, "#fff");
+    ovale(22, 25, 25, 33, "#000");
+    ovale(36, 25, 39, 33, "#000");
+    poly([27, 37, 33, 37, 30, 41], "#e57399");                         // nez
+    ligne([30, 41, 30, 44], foncee, 2);                                // bouche
+    for (const dy of [38, 42]) {                                       // moustaches
+      ligne([4, dy - 1, 22, dy + 1], foncee, 1);
+      ligne([56, dy - 1, 38, dy + 1], foncee, 1);
+    }
+  } else if (nom === "fusée") {
+    poly([24, 46, 30, 58, 36, 46], "#f39c12");                         // flamme
+    poly([27, 46, 30, 53, 33, 46], "#f9e04b");
+    poly([20, 32, 11, 48, 20, 44], foncee);                            // ailerons
+    poly([40, 32, 49, 48, 40, 44], foncee);
+    poly([30, 2, 41, 18, 41, 46, 19, 46, 19, 18], principale, foncee, 2);   // corps
+    poly([30, 2, 37, 12, 23, 12], claire);                             // pointe
+    ovale(24, 20, 36, 32, "#d6eaf8", foncee, 2);                       // hublot
+    rect(22, 40, 38, 42, foncee);
+  }
+  ctx.restore();
+}
+
+
+// ============================ Le plateau (décor fixe) ============================
+
+function calculerGeometrie() {
+  // Dimensions du damier à l'écran : cases de « taille » pixels, entourées d'une marge
+  // pour que le personnage (plus grand qu'une case) ne soit jamais coupé.
+  const { colonnes, lignes } = etat.damier;
+  const taille = reglagesPartie.taille;
+  const marge = margeDamier(taille);
+  return {
+    colonnes, lignes, taille, marge, perso: taillePerso(taille),
+    largeur: colonnes * taille + 2 * marge,
+    hauteur: lignes * taille + 2 * marge,
+  };
+}
+
+const centreX = (c) => geo.marge + c * geo.taille + geo.taille / 2;     // centre d'une case, en pixels
+const centreY = (l) => geo.marge + l * geo.taille + geo.taille / 2;
+
+function installerToiles() {
+  cadre.style.width = geo.largeur + "px";
+  cadre.style.height = geo.hauteur + "px";
+  ctxPlateau = preparerToile(toilePlateau, geo.largeur, geo.hauteur);
+  ctxEffets = preparerToile(toileEffets, geo.largeur, geo.hauteur);
+  bas.style.setProperty("--largeur", Math.max(geo.largeur, 460) + "px");
+}
+
+function dessinerPlateau() {
+  // Dessine le décor : cases en damier, mur extérieur, portes, murs de briques, puis la trace déjà faite.
+  const ctx = ctxPlateau;
+  const { colonnes, lignes, taille, marge } = geo;
+  const { portes } = etat.damier;
+  const e = EPAISSEUR_MUR;
+  const gauche = marge, haut = marge, droite = marge + colonnes * taille, basDamier = marge + lignes * taille;
+  ctx.clearRect(0, 0, geo.largeur, geo.hauteur);
+
+  // Ombre portée de tout le cadre
+  ctx.save();
+  ctx.shadowColor = "rgba(50, 35, 15, 0.38)";
+  ctx.shadowBlur = 9;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = MUR;
+  ctx.fillRect(gauche - e, haut - e, droite - gauche + 2 * e, basDamier - haut + 2 * e);
+  ctx.restore();
+
+  // Les cases : damier clair / foncé
+  for (let c = 0; c < colonnes; c++) {
+    for (let l = 0; l < lignes; l++) {
+      ctx.fillStyle = (c + l) % 2 === 0 ? "#f6f2e8" : "#ebe5d6";
+      ctx.fillRect(gauche + c * taille, haut + l * taille, taille, taille);
+    }
+  }
+  ctx.beginPath();                                    // fines lignes de séparation (un seul tracé : rapide)
+  for (let c = 0; c <= colonnes; c++) { ctx.moveTo(gauche + c * taille, haut); ctx.lineTo(gauche + c * taille, basDamier); }
+  for (let l = 0; l <= lignes; l++) { ctx.moveTo(gauche, haut + l * taille); ctx.lineTo(droite, haut + l * taille); }
+  ctx.strokeStyle = "rgba(120, 100, 70, 0.16)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Ombre intérieure le long des murs (donne du relief)
+  const ombre = (x1, y1, x2, y2, rx, ry, rw, rh) => {
+    const d = ctx.createLinearGradient(x1, y1, x2, y2);
+    d.addColorStop(0, "rgba(40, 25, 10, 0.22)");
+    d.addColorStop(1, "rgba(40, 25, 10, 0)");
+    ctx.fillStyle = d;
+    ctx.fillRect(rx, ry, rw, rh);
+  };
+  const p = Math.min(8, taille / 2);
+  ombre(0, haut, 0, haut + p, gauche, haut, droite - gauche, p);
+  ombre(0, basDamier, 0, basDamier - p, gauche, basDamier - p, droite - gauche, p);
+  ombre(gauche, 0, gauche + p, 0, gauche, haut, p, basDamier - haut);
+  ombre(droite, 0, droite - p, 0, droite - p, haut, p, basDamier - haut);
+
+  // Le mur extérieur : un cadre épais tout autour du damier
+  ctx.fillStyle = MUR;
+  ctx.fillRect(gauche - e, haut - e, droite - gauche + 2 * e, e);       // haut
+  ctx.fillRect(gauche - e, basDamier, droite - gauche + 2 * e, e);      // bas
+  ctx.fillRect(gauche - e, haut, e, basDamier - haut);                  // gauche
+  ctx.fillRect(droite, haut, e, basDamier - haut);                      // droite
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  ctx.strokeRect(gauche - e + 0.5, haut - e + 0.5, droite - gauche + 2 * e - 1, basDamier - haut + 2 * e - 1);
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.30)";
+  ctx.strokeRect(gauche - 0.5, haut - 0.5, droite - gauche + 1, basDamier - haut + 1);
+
+  // Les portes : un morceau de mur en bois, avec un trait entre les cases, et une lueur devant
+  for (const mur of Object.keys(DIRECTIONS)) {
+    const debut = portes[mur];
+    const fin = debut + largeurPorte(colonnes, lignes, mur);
+    const vertical = mur === "left" || mur === "right";
+    let x1, y1, x2, y2;                                                  // le rectangle de la porte
+    if (vertical) {
+      x1 = mur === "left" ? gauche - e : droite; x2 = x1 + e;
+      y1 = haut + debut * taille; y2 = haut + fin * taille;
+    } else {
+      y1 = mur === "up" ? haut - e : basDamier; y2 = y1 + e;
+      x1 = gauche + debut * taille; x2 = gauche + fin * taille;
+    }
+    // lueur sur les cases devant la porte
+    const sens = mur === "left" || mur === "up" ? 1 : -1;
+    const lueur = vertical
+      ? ctx.createLinearGradient(sens > 0 ? gauche : droite, 0, sens > 0 ? gauche + 12 : droite - 12, 0)
+      : ctx.createLinearGradient(0, sens > 0 ? haut : basDamier, 0, sens > 0 ? haut + 12 : basDamier - 12);
+    lueur.addColorStop(0, "rgba(255, 205, 110, 0.55)");
+    lueur.addColorStop(1, "rgba(255, 205, 110, 0)");
+    ctx.fillStyle = lueur;
+    if (vertical) ctx.fillRect(sens > 0 ? gauche : droite - 12, y1, 12, y2 - y1);
+    else ctx.fillRect(x1, sens > 0 ? haut : basDamier - 12, x2 - x1, 12);
+    // le bois
+    const bois = vertical ? ctx.createLinearGradient(x1, 0, x2, 0) : ctx.createLinearGradient(0, y1, 0, y2);
+    bois.addColorStop(0, "#ecbf7e");
+    bois.addColorStop(1, PORTE);
+    ctx.fillStyle = bois;
+    ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.strokeStyle = CADRE;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = debut + 1; k < fin; k++) {
+      if (vertical) { ctx.moveTo(x1, haut + k * taille); ctx.lineTo(x2, haut + k * taille); }
+      else { ctx.moveTo(gauche + k * taille, y1); ctx.lineTo(gauche + k * taille, y2); }
+    }
+    ctx.stroke();
+  }
+
+  // Les murs intérieurs : d'abord leur ombre, puis chaque case de brique
+  ctx.fillStyle = "rgba(40, 25, 10, 0.20)";
+  for (const k of etat.murs) {
+    const [c, l] = decoder(k);
+    ctx.fillRect(gauche + c * taille + 2, haut + l * taille + 3, taille, taille);
+  }
+  for (const k of etat.murs) {
+    const [c, l] = decoder(k);
+    const g = gauche + c * taille, h = haut + l * taille;
+    const brique = ctx.createLinearGradient(0, h, 0, h + taille);
+    brique.addColorStop(0, "#74604d");
+    brique.addColorStop(1, "#523f2d");
+    ctx.fillStyle = brique;
+    ctx.fillRect(g, h, taille, taille);
+    ctx.strokeStyle = "#3e3226";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(g + 0.5, h + 0.5, taille - 1, taille - 1);
+    ctx.strokeStyle = "#8a7560";                                         // joints : deux rangées de briques
+    ctx.beginPath();
+    ctx.moveTo(g, h + taille / 2); ctx.lineTo(g + taille, h + taille / 2);
+    ctx.moveTo(g + taille / 2, h); ctx.lineTo(g + taille / 2, h + taille / 2);
+    ctx.moveTo(g + taille / 4, h + taille / 2); ctx.lineTo(g + taille / 4, h + taille);
+    ctx.moveTo(g + 3 * taille / 4, h + taille / 2); ctx.lineTo(g + 3 * taille / 4, h + taille);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.14)";                         // reflet sur le bord du haut
+    ctx.fillRect(g + 1, h + 1, taille - 2, 2);
+  }
+
+  for (const k of casesTracees) {                                        // la trace déjà laissée
+    const [c, l] = decoder(k);
+    dessinerTrace(c, l);
+  }
+}
+
+function dessinerTrace(c, l) {
+  // Colorie une case avec la teinte claire de la couleur choisie.
+  const ctx = ctxPlateau;
+  ctx.beginPath();
+  rectArrondi(ctx, geo.marge + c * geo.taille + 1, geo.marge + l * geo.taille + 1, geo.taille - 2, geo.taille - 2, 5);
+  ctx.fillStyle = COULEURS[reglagesPartie.couleur][3];
+  ctx.fill();
+}
+
+function tracerCase(c, l) {
+  // Si la trace est activée, colorie la case (une seule fois).
+  const k = cle(c, l);
+  if (!reglagesPartie.trace || casesTracees.has(k)) return;
+  casesTracees.add(k);
+  dessinerTrace(c, l);
+}
+
+
+// ============================ Les effets (tout ce qui bouge) ============================
+
+function positionVisuelle(maintenant) {
+  // Où est le personnage à l'écran à cet instant, en cases (nombres à virgule pendant un déplacement).
+  // L'état du jeu, lui, est déjà à jour : l'animation rattrape la position logique.
+  const v = { x: etat.x, y: etat.y, alpha: 1, sx: 1, sy: 1, rot: 0, saut: 0 };
+  if (mouvement === null) return v;
+  const t = maintenant - mouvement.debut;
+  if (mouvement.type === "pas") {
+    const p = Math.min(1, t / DUREE_PAS);
+    const [dx, dy] = DIRECTIONS[mouvement.direction];
+    const [de, vers] = [mouvement.de, mouvement.vers];
+    if (!mouvement.porte) {
+      const q = facilite(p);
+      v.x = de[0] + (vers[0] - de[0]) * q;
+      v.y = de[1] + (vers[1] - de[1]) * q;
+    } else if (p < 0.5) {                      // une porte : il sort du damier en s'effaçant…
+      const q = facilite(p / 0.5);
+      v.x = de[0] + dx * 0.7 * q;
+      v.y = de[1] + dy * 0.7 * q;
+      v.alpha = 1 - q;
+    } else {                                   // … et ressort de l'autre côté
+      const q = facilite((p - 0.5) / 0.5);
+      v.x = vers[0] - dx * 0.7 * (1 - q);
+      v.y = vers[1] - dy * 0.7 * (1 - q);
+      v.alpha = q;
+    }
+    v.saut = Math.sin(Math.PI * p) * 0.1;      // petit saut à chaque pas
+    v.rot = dx * 0.1 * Math.sin(Math.PI * p);  // légère inclinaison dans le sens de la marche
+    if (p >= 1) mouvement = null;
+  } else {                                     // choc
+    const { dx, dy } = mouvement;
+    const quart = DUREE_CHOC / 4;
+    if (t < quart) {                           // il avance d'une demi-case dans le mur
+      const q = freinage(t / quart);
+      v.x = mouvement.depart[0] + (mouvement.lunge[0] - mouvement.depart[0]) * q;
+      v.y = mouvement.depart[1] + (mouvement.lunge[1] - mouvement.depart[1]) * q;
+    } else if (t < DUREE_CHOC) {               // puis revient sur sa case de rebond en tremblant
+      const t2 = t - quart;
+      const q = freinage(Math.min(1, t2 / 110));
+      const pasSecousse = (DUREE_CHOC - quart) / SECOUSSES.length;
+      const i = Math.min(SECOUSSES.length - 1, Math.floor(t2 / pasSecousse));
+      const suivante = i + 1 < SECOUSSES.length ? SECOUSSES[i + 1] : 0;
+      const secousse = SECOUSSES[i] + (suivante - SECOUSSES[i]) * ((t2 - i * pasSecousse) / pasSecousse);
+      v.x = mouvement.lunge[0] + (mouvement.rebond[0] - mouvement.lunge[0]) * q + dx * secousse;
+      v.y = mouvement.lunge[1] + (mouvement.rebond[1] - mouvement.lunge[1]) * q + dy * secousse;
+      const ecrase = Math.max(0, 1 - t2 / 140) * 0.12;      // le choc l'écrase un instant
+      v.sx = 1 + (dy !== 0 ? ecrase : -ecrase);
+      v.sy = 1 + (dx !== 0 ? ecrase : -ecrase);
+    } else {
+      mouvement = null;
+    }
+  }
+  return v;
+}
+
+function particule(x, y, vx, vy, g, debut, vie, couleur, taille, forme) {
+  // Un petit grain qui vole (poussière, étincelle, confetti). Positions en pixels, vitesses en pixels par seconde.
+  return { x, y, vx, vy, g, debut, vie, couleur, taille, forme, rot: Math.random() * 6.28, vrot: (Math.random() - 0.5) * 12 };
+}
+
+function texteFlottant(texte, c, l, couleur, maintenant) {
+  // Un gros texte (« Boum ! », « +1 ») au-dessus du personnage en (c, l), ou en dessous s'il n'y a pas la place.
+  const hauteur = Math.max(24, Math.floor(geo.taille * 1.3));
+  ctxEffets.font = "800 " + hauteur + "px " + POLICE;
+  const demiLargeur = ctxEffets.measureText(texte).width / 2 + 4;
+  const ecart = geo.perso / 2 + hauteur / 2 + 2;              // du centre du personnage au centre du texte
+  const centre = centreY(l);
+  let cy = centre - ecart >= hauteur / 2 ? centre - ecart : centre + ecart;
+  cy = Math.min(cy, geo.hauteur - hauteur / 2);
+  const cx = Math.min(Math.max(centreX(c), demiLargeur), geo.largeur - demiLargeur);
+  return { type: "texte", texte, cx, cy, hauteur, couleur, debut: maintenant, duree: DUREE_TEXTE };
+}
+
+function rectangleMur(ev) {
+  // Le mur heurté, en pixels : toute la case de brique, ou la bande du mur extérieur.
+  const { taille, marge, colonnes, lignes } = geo;
+  const [dx, dy] = DIRECTIONS[ev.direction];
+  if (ev.contre === "brique") return [marge + ev.cible[0] * taille, marge + ev.cible[1] * taille, taille, taille];
+  const e = EPAISSEUR_MUR;
+  if (dx !== 0) return [dx < 0 ? marge - e : marge + colonnes * taille, marge + ev.de[1] * taille, e, taille];
+  return [marge + ev.de[0] * taille, dy < 0 ? marge - e : marge + lignes * taille, taille, e];
+}
+
+function appliquerEvenement(ev) {
+  // Lance l'animation qui correspond à ce qui vient de se passer dans le jeu.
+  const maintenant = performance.now();
+  const vis = positionVisuelle(maintenant);               // le personnage repart d'où il est à l'écran
+  const partie = numeroPartie;
+  const plusTard = (delai, fonction) => setTimeout(() => { if (partie === numeroPartie && enJeu) fonction(); }, delai);
+  aRedessiner = true;
+  if (ev.type === "pas") {
+    mouvement = { type: "pas", debut: maintenant, de: [vis.x, vis.y], vers: ev.vers, porte: ev.porte, direction: ev.direction };
+    plusTard(DUREE_PAS * 0.6, () => tracerCase(ev.vers[0], ev.vers[1]));
+  } else if (ev.type === "choc") {
+    const [dx, dy] = DIRECTIONS[ev.direction];
+    mouvement = {
+      type: "choc", debut: maintenant, dx, dy, depart: [vis.x, vis.y],
+      lunge: [ev.de[0] + dx * 0.5, ev.de[1] + dy * 0.5], rebond: ev.rebond,
+    };
+    effets.push({ type: "mur", debut: maintenant, duree: DUREE_CHOC, rect: rectangleMur(ev) });
+    effets.push(texteFlottant("Boum !", ev.rebond[0], ev.rebond[1], CHOC, maintenant));
+    const px = centreX(ev.de[0]) + dx * geo.taille * 0.5;     // le point de contact : la limite entre la case et le mur
+    const py = centreY(ev.de[1]) + dy * geo.taille * 0.5;
+    if (!sansAnimation) {
+      for (let i = 0; i < 9; i++) {                           // un peu de poussière
+        const angle = Math.atan2(-dy, -dx) + (Math.random() - 0.5) * 2.2;
+        const vitesse = 40 + Math.random() * 90;
+        particules.push(particule(px, py, Math.cos(angle) * vitesse, Math.sin(angle) * vitesse - 20, 160,
+          maintenant + 60, 380 + Math.random() * 200, "rgba(150, 125, 95, 0.75)", 2 + Math.random() * 3, "rond"));
+      }
+    }
+    plusTard(DUREE_CHOC / 2, () => tracerCase(ev.rebond[0], ev.rebond[1]));
+  } else if (ev.type === "prise") {
+    const [c, l] = ev.case;
+    effets.push({ type: "piece", debut: maintenant, duree: DUREE_PRISE, c, l });
+    effets.push(texteFlottant("+" + ev.points, c, l, OR, maintenant));
+    if (!sansAnimation) {
+      for (let i = 0; i < 10; i++) {                          // des étincelles dorées
+        const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.4;
+        const vitesse = 90 + Math.random() * 90;
+        particules.push(particule(centreX(c), centreY(l), Math.cos(angle) * vitesse, Math.sin(angle) * vitesse, 120,
+          maintenant, 520, i % 2 === 0 ? "#ffd84d" : "#fff3b0", 4 + Math.random() * 3, "etoile"));
+      }
+    }
+    compteur.classList.add("or");                             // le compteur s'allume en doré…
+    clearTimeout(minuteurOr);
+    minuteurOr = setTimeout(() => compteur.classList.remove("or"), DUREE_COMPTEUR_OR);   // … puis redevient bleu
+    annonce.textContent = "Pièce prise : " + etat.ramasses + " sur " + etat.nbPieces;
+    if (ev.derniere) plusTard(DELAI_BRAVO, afficherBravo);    // après l'animation de la pièce
+  }
+}
+
+function dessinerPiece(ctx, cx, cy, r, maintenant, phase, alpha) {
+  // Une pièce d'or : dégradé, double cercle, petit reflet qui tourne et légère flottaison.
+  const flotte = sansAnimation ? 0 : Math.sin(maintenant / 520 + phase) * r * 0.07;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy + flotte);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.13)";                        // ombre au sol
+  ctx.beginPath();
+  ctx.ellipse(0, r * 1.05 - flotte, r * 0.8, r * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const degrade = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.1);
+  degrade.addColorStop(0, "#fff1a8");
+  degrade.addColorStop(0.55, "#f5c542");
+  degrade.addColorStop(1, "#d9a21b");
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = degrade;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#a87a12";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2);
+  ctx.strokeStyle = OR;
+  ctx.stroke();
+  if (!sansAnimation) {
+    const a = maintenant / 650 + phase;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.8, a, a + 0.8);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.lineCap = "round";
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function dessinerEtoile(ctx, rayon) {
+  // Trace une étoile à quatre branches, centrée sur l'origine.
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const r = i % 2 === 0 ? rayon : rayon * 0.35;
+    const a = (i * Math.PI) / 4;
+    if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
+function dessinerTexteContour(ctx, texte, cx, cy, hauteur, couleur, alpha, echelle) {
+  // Un gros texte coloré avec un contour blanc, pour qu'on le lise sur tous les fonds.
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.scale(echelle, echelle);
+  ctx.font = "800 " + hauteur + "px " + POLICE;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = Math.max(5, hauteur * 0.17);
+  ctx.strokeStyle = "#fff";
+  ctx.strokeText(texte, 0, 0);
+  ctx.fillStyle = couleur;
+  ctx.fillText(texte, 0, 0);
+  ctx.restore();
+}
+
+function dessinerBravo(ctx, effet, maintenant) {
+  // Le panneau de victoire, au milieu du damier : il grandit en rebondissant, puis reste jusqu'à « end ».
+  const t = maintenant - effet.debut;
+  const echelle = 0.72 + 0.28 * rebondi(Math.min(1, t / 380));
+  const alpha = Math.min(1, t / 180);
+  const pw = Math.min(geo.largeur - 20, 460);
+  const ph = Math.min(geo.hauteur - 20, 200);
+  const grand = Math.max(16, Math.min(40, Math.floor(pw / 6)));
+  const petit = Math.max(8, Math.min(17, Math.floor(pw / 26)));
+  const r = effet.resume;
+  const lignes = [                                       // [texte, taille, couleur, hauteur relative]
+    [r.titre, grand, VERT, -0.28],
+    [r.detail, petit + 4, "#333", 0],
+    [r.comparaison, petit + 2, r.estMinimum ? VERT : "#b9770e", 0.2],
+    [r.rejouer, petit, "#777", 0.37],
+  ];
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(geo.largeur / 2, geo.hauteur / 2);
+  ctx.scale(echelle, echelle);
+  ctx.shadowColor = "rgba(0, 0, 0, 0.30)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 8;
+  ctx.beginPath();
+  rectArrondi(ctx, -pw / 2, -ph / 2, pw, ph, 18);
+  ctx.fillStyle = "#fffaf0";
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = VERT;
+  ctx.stroke();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const [texte, taille, couleur, position] of lignes) {
+    policeAjustee(ctx, texte, taille, pw - 24);
+    ctx.fillStyle = couleur;
+    ctx.fillText(texte, 0, ph * position);
+  }
+  ctx.restore();
+}
+
+function confettis(maintenant) {
+  // Une explosion de confettis au moment de la victoire.
+  const couleurs = ["#e74c3c", "#f5c542", "#3b82c4", "#3e9b4f", "#e05a9c", "#8b5cc4", "#e8892b"];
+  for (let i = 0; i < 110; i++) {
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+    const vitesse = 260 + Math.random() * 460;
+    const p = particule(geo.largeur * (0.2 + 0.6 * Math.random()), geo.hauteur * 0.45,
+      Math.cos(angle) * vitesse * 0.75, Math.sin(angle) * vitesse, 900,
+      maintenant + Math.random() * 150, 1800 + Math.random() * 1500, couleurs[i % couleurs.length],
+      5 + Math.random() * 5, Math.random() < 0.3 ? "rond" : "rect");
+    particules.push(p);
+  }
+}
+
+function afficherBravo() {
+  // Panneau de victoire, posé sur le damier.
+  if (!enJeu || !gagne(etat)) return;
+  const maintenant = performance.now();
+  const resume = resumeVictoire(etat);
+  effets.push({ type: "bravo", debut: maintenant, duree: Infinity, resume });
+  if (!sansAnimation) confettis(maintenant);
+  annonce.textContent = resume.titre + " " + resume.detail + ". " + resume.comparaison;
+  aRedessiner = true;
+}
+
+function dessinerEffets(maintenant) {
+  // Dessine une image de tout ce qui bouge, dans l'ordre (de l'arrière vers l'avant) :
+  // pièces, mur heurté, personnage, pièce qui s'envole, grains, textes, panneau Bravo.
+  const ctx = ctxEffets;
+  ctx.clearRect(0, 0, geo.largeur, geo.hauteur);
+
+  for (const k of etat.tresors) {                                    // les pièces posées sur le damier
+    const [c, l] = decoder(k);
+    dessinerPiece(ctx, centreX(c), centreY(l), geo.taille * 0.32, maintenant, c * 7 + l * 3, 1);
+  }
+
+  for (const ef of effets) {                                         // le mur heurté devient rouge
+    if (ef.type !== "mur") continue;
+    const p = (maintenant - ef.debut) / ef.duree;
+    ctx.save();
+    ctx.globalAlpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
+    ctx.shadowColor = CHOC;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = CHOC;
+    ctx.fillRect(...ef.rect);
+    ctx.restore();
+  }
+
+  const v = positionVisuelle(maintenant);                            // le personnage
+  const respiration = sansAnimation || mouvement !== null ? 0 : Math.sin(maintenant / 380) * geo.taille * 0.018;
+  const px = centreX(v.x);
+  const pied = centreY(v.y) + geo.perso / 2 - v.saut * geo.taille + respiration;   // le bas du personnage
+  ctx.save();
+  ctx.globalAlpha = 0.9 * v.alpha * Math.max(0, 1 - v.saut * 3);     // son ombre au sol
+  ctx.fillStyle = "rgba(0, 0, 0, 0.17)";
+  ctx.beginPath();
+  ctx.ellipse(px, centreY(v.y) + geo.perso * 0.42, geo.perso * 0.26, geo.perso * 0.07, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = v.alpha;
+  ctx.translate(px, pied);
+  ctx.rotate(v.rot);
+  ctx.scale(v.sx, v.sy);
+  dessinerPersonnage(ctx, reglagesPartie.personnage, -geo.perso / 2, -geo.perso, geo.perso / 60, COULEURS[reglagesPartie.couleur]);
+  ctx.restore();
+
+  for (const ef of effets) {                                         // la pièce prise grossit et s'envole
+    if (ef.type !== "piece") continue;
+    const p = (maintenant - ef.duree * 0 - ef.debut) / ef.duree;
+    const alpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
+    dessinerPiece(ctx, centreX(ef.c), centreY(ef.l) - p * 0.84 * geo.taille, geo.taille * 0.32 * (1 + 0.84 * p),
+      maintenant, 0, alpha);
+  }
+
+  for (const g of particules) {                                      // poussière, étincelles, confettis
+    const t = (maintenant - g.debut) / 1000;
+    if (t < 0) continue;
+    const reste = g.vie - t * 1000;
+    if (reste <= 0) continue;
+    const x = g.x + g.vx * t;
+    const y = g.y + g.vy * t + 0.5 * g.g * t * t;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, reste / (g.vie * 0.35));
+    ctx.translate(x, y);
+    ctx.fillStyle = g.couleur;
+    if (g.forme === "rond") {
+      ctx.beginPath();
+      ctx.arc(0, 0, g.taille / 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (g.forme === "etoile") {
+      ctx.rotate(g.rot + g.vrot * t);
+      dessinerEtoile(ctx, g.taille);
+      ctx.fill();
+    } else {                                                          // confetti : un petit rectangle qui tourne et se retourne
+      ctx.rotate(g.rot + g.vrot * t);
+      ctx.scale(1, Math.abs(Math.cos(g.vrot * t * 1.3 + g.rot)));
+      ctx.fillRect(-g.taille / 2, -g.taille / 4, g.taille, g.taille / 2);
+    }
+    ctx.restore();
+  }
+
+  for (const ef of effets) {                                         // « Boum ! » et « +1 »
+    if (ef.type !== "texte") continue;
+    const t = maintenant - ef.debut;
+    const p = t / ef.duree;
+    const echelle = t < 160 ? 0.55 + 0.45 * rebondi(t / 160) : 1;     // il « pop » en apparaissant
+    const alpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
+    const monte = -geo.taille * 0.3 * freinage(Math.min(1, p * 1.5));
+    const tremble = ef.texte === "Boum !" && t < 220 ? Math.sin(t / 16) * 3 * (1 - t / 220) : 0;
+    dessinerTexteContour(ctx, ef.texte, ef.cx + tremble, ef.cy + monte, ef.hauteur, ef.couleur, alpha, echelle);
+  }
+
+  for (const ef of effets) {                                         // le panneau Bravo, par-dessus tout
+    if (ef.type === "bravo") dessinerBravo(ctx, ef, maintenant);
+  }
+
+  effets = effets.filter((ef) => maintenant - ef.debut < ef.duree);
+  particules = particules.filter((g) => maintenant - g.debut < g.vie);
+}
+
+function image(maintenant) {
+  // Une image de l'animation. On redessine seulement si quelque chose bouge ou a changé,
+  // sauf sur un petit damier où l'on garde les pièces qui brillent et le personnage qui respire.
+  boucleImage = requestAnimationFrame(image);
+  if (!enJeu) return;
+  const actif = mouvement !== null || effets.length > 0 || particules.length > 0;
+  const petitDamier = geo.largeur * geo.hauteur <= 2500000;
+  if (aRedessiner || actif || etaitActif || (petitDamier && !sansAnimation)) {
+    dessinerEffets(maintenant);
+  }
+  aRedessiner = false;
+  etaitActif = actif;
+}
+
+function demarrerBoucle() {
+  if (boucleImage === null) boucleImage = requestAnimationFrame(image);
+}
+
+function arreterBoucle() {
+  if (boucleImage !== null) cancelAnimationFrame(boucleImage);
+  boucleImage = null;
+}
+
+
+// ============================ La partie : saisie, exécution, clavier ============================
+
+function afficherCompteur() {
+  compteur.textContent = texteCompteur(etat);
+}
+
+function afficherBande(action, genre) {
+  // La ligne exécutée, avec l'instruction en cours surlignée ; dans une boucle, le bloc entier est teinté
+  // et le numéro du tour s'affiche. Avec action = null : la ligne est terminée, on la grise.
+  bande.replaceChildren();
+  if (ligneEnCours === null) return;
+  const texte = ligneEnCours.texte;
+  const ajouter = (parent, contenu, classe) => {
+    if (contenu === "") return null;
+    const s = document.createElement("span");
+    if (classe) s.className = classe;
+    s.textContent = contenu;                              // textContent : jamais interprété comme du HTML
+    parent.appendChild(s);
+    return s;
+  };
+  if (action === null) { ajouter(bande, texte, "termine"); return; }
+  const b = action.bloc;
+  if (!b) {
+    ajouter(bande, texte.slice(0, action.debut), "fait");
+    ajouter(bande, texte.slice(action.debut, action.fin), "actif " + genre);
+    ajouter(bande, texte.slice(action.fin), "");
+    return;
+  }
+  ajouter(bande, texte.slice(0, b.debut), "fait");
+  const bloc = ajouter(bande, " ", "bloc");               // le bloc « repeat … ) » (le contenu est remplacé juste après)
+  bloc.textContent = "";
+  ajouter(bloc, texte.slice(b.debut, action.debut), "");
+  ajouter(bloc, texte.slice(action.debut, action.fin), "actif " + genre);
+  ajouter(bloc, texte.slice(action.fin, b.fin), "");
+  const tour = ajouter(bande, "tour " + b.tour + "/" + b.fois, "tour");
+  if (tour === null) return;
+  ajouter(bande, texte.slice(b.fin), "");
+}
+
+function arreterAnimation() {
+  // Annule l'action programmée, s'il y en a une (nouvelle ligne tapée, ou « end »).
+  if (minuteur !== null) clearTimeout(minuteur);
+  minuteur = null;
+}
+
+function executer(actions, i) {
+  // Joue les actions une par une (un pas ou « take »), avec une petite pause (VITESSE) entre chaque.
+  // Si le personnage heurte un mur, ou prend la dernière pièce, la suite est abandonnée.
+  minuteur = null;
+  if (!enJeu) return;
+  if (i >= actions.length) { afficherBande(null); return; }
+  const action = actions[i];
+  const r = jouerAction(etat, action);
+  etat = r.etat;
+  appliquerEvenement(r.evenement);
+  afficherCompteur();
+  afficherBande(action, r.evenement.type === "choc" ? "choc" : r.evenement.type === "prise" ? "prise" : "");
+  if (r.continuer) {
+    minuteur = setTimeout(() => executer(actions, i + 1), VITESSE);
+  } else {
+    setTimeout(() => { if (enJeu) afficherBande(null); }, 350);
+  }
+}
+
+function validerLigne() {
+  // Entrée (ou bouton Go) dans la case de saisie.
+  if (!enJeu) return;
+  const texte = saisie.value;
+  const r = accepterLigne(etat, texte);
+  if (r.fin) { montrerConfig(); return; }                // « end » : retour au menu
+  if (r.ignoree) { saisie.value = ""; return; }          // partie gagnée : on attend « end »
+  if (r.refusee) {                                       // la ligne reste dans la case, pour être corrigée
+    message.textContent = r.message;
+    return;
+  }
+  saisie.value = "";
+  message.textContent = "";
+  etat = r.etat;
+  afficherCompteur();
+  arreterAnimation();
+  ligneEnCours = { texte, actions: r.actions };
+  afficherBande(null);
+  if (r.actions.length > 0) executer(r.actions, 0);
+}
+
+function fleche(direction) {
+  // Une flèche du clavier : un pas immédiat, qui compte pour une instruction.
+  // Comme dans la V2, elle n'arrête pas une séquence en cours : son pas s'intercale.
+  if (!enJeu || gagne(etat)) return;
+  message.textContent = "";
+  const r = jouerFleche(etat, direction);
+  etat = r.etat;
+  appliquerEvenement(r.evenement);
+  afficherCompteur();
+}
+
+function inserer(item) {
+  // Clic sur une pastille d'aide : on écrit la commande dans la saisie, à l'endroit du curseur.
+  if (!enJeu) return;
+  const debut = saisie.selectionStart === null ? saisie.value.length : saisie.selectionStart;
+  const fin = saisie.selectionEnd === null ? debut : saisie.selectionEnd;
+  const avant = saisie.value.slice(0, debut);
+  const apres = saisie.value.slice(fin);
+  const espace = avant === "" || /[\s(]$/.test(avant) ? "" : " ";
+  const ajout = espace + item.insere;
+  saisie.value = avant + ajout + apres;
+  saisie.focus();
+  if (item.nombre) {                                     // on sélectionne le nombre : il suffit de taper pour le changer
+    const m = /\d+(?!.*\d)/.exec(ajout);
+    saisie.setSelectionRange(avant.length + m.index, avant.length + m.index + m[0].length);
+  } else {
+    const pos = avant.length + ajout.length + (item.curseur || 0);
+    saisie.setSelectionRange(pos, pos);
+  }
+}
+
+function construireAide() {
+  aide.replaceChildren();
+  for (const item of AIDE) {
+    if (item === null) {
+      const sep = document.createElement("span");
+      sep.className = "sep";
+      sep.textContent = "·";
+      aide.appendChild(sep);
+      continue;
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = item.texte;
+    b.addEventListener("click", () => inserer(item));
+    aide.appendChild(b);
+  }
+  $("aide-detail").textContent = AIDE_DETAIL;
+}
+
+function lancerPartie(nouvelEtat) {
+  // Passe à l'écran de jeu avec cet état (damier neuf, ou damier fixé à la main pour les tests).
+  arreterTout();
+  numeroPartie += 1;
+  etat = nouvelEtat;
+  enJeu = true;
+  reglagesPartie = { ...reglages };
+  casesTracees = new Set();
+  effets = [];
+  particules = [];
+  mouvement = null;
+  ligneEnCours = null;
+  ecranConfig.hidden = true;
+  ecranAdieu.hidden = true;
+  ecranJeu.hidden = false;
+  geo = calculerGeometrie();
+  installerToiles();
+  dessinerPlateau();
+  tracerCase(etat.x, etat.y);                            // la case de départ est tracée aussi
+  afficherCompteur();
+  message.textContent = "";
+  bande.replaceChildren();
+  annonce.textContent = "";
+  saisie.value = "";
+  aRedessiner = true;
+  demarrerBoucle();
+  saisie.focus();
+}
+
+function arreterTout() {
+  arreterAnimation();
+  clearTimeout(minuteurOr);
+  compteur.classList.remove("or");
+  arreterBoucle();
+  mouvement = null;
+  effets = [];
+  particules = [];
+}
+
+
+// ============================ Le menu ============================
+
+function dimensions() {
+  // Place disponible dans la fenêtre. La hauteur est corrigée de la différence entre cette mise en page
+  // et les 220 pixels que la logique réserve (comme la V2 le faisait pour l'écran).
+  return { largeur: document.documentElement.clientWidth, hauteur: window.innerHeight - SURPLUS_VERTICAL };
+}
+
+function lireStockage() {
+  try {
+    const texte = localStorage.getItem(CLE_STOCKAGE);
+    return texte === null ? null : JSON.parse(texte);
+  } catch (erreur) {
+    return null;                                          // stockage bloqué ou texte abîmé : valeurs par défaut
+  }
+}
+
+function ecrireStockage(valeurs) {
+  try {
+    localStorage.setItem(CLE_STOCKAGE, JSON.stringify(valeurs));
+  } catch (erreur) {
+    // navigation privée, stockage bloqué… : on joue quand même, sans mémoriser
+  }
+}
+
+function afficherErreurConfig(texte, orange) {
+  erreurConfig.textContent = texte;
+  erreurConfig.classList.toggle("orange", Boolean(orange));
+}
+
+function tailleSaisie() {
+  // La taille des cases tapée dans le menu, si elle est valide ; sinon null.
+  const t = lireEntier(champTaille.value);
+  return t !== null && t >= TAILLE_MINI && t <= TAILLE_MAXI ? t : null;
+}
+
+function majLimites() {
+  // Pendant qu'on tape la taille des cases, on recalcule les limites affichées.
+  const t = tailleSaisie();
+  if (t === null) {
+    texteColonnes.textContent = "Combien de colonnes ?";
+    texteLignes.textContent = "Combien de lignes ?";
+    return;
+  }
+  const d = dimensions();
+  const { maxiColonnes, maxiLignes } = limitesDamier(t, d.largeur, d.hauteur);
+  texteColonnes.textContent = "Combien de colonnes ? (" + MINI_CASES + " à " + maxiColonnes + ")";
+  texteLignes.textContent = "Combien de lignes ? (" + MINI_CASES + " à " + maxiLignes + ")";
+}
+
+function limitesCourantes() {
+  // Limites de colonnes et de lignes pour la taille tapée (ou, à défaut, la dernière taille valide).
+  const t = tailleSaisie() === null ? reglages.taille : tailleSaisie();
+  const d = dimensions();
+  return { t, ...limitesDamier(t, d.largeur, d.hauteur) };
+}
+
+function remplirChamps() {
+  champTaille.value = String(reglages.taille);
+  champColonnes.value = String(reglages.colonnes);
+  champLignes.value = String(reglages.lignes);
+  champPieces.value = String(reglages.pieces);
+  champTrace.checked = reglages.trace;
+}
+
+function actualiserChoix() {
+  // Marque les choix en cours (murs, couleur, personnage) et redessine les personnages dans la couleur choisie.
+  for (const b of zoneNiveaux.children) {
+    b.classList.toggle("choisi", b.dataset.valeur === reglages.niveau);
+    b.setAttribute("aria-checked", String(b.dataset.valeur === reglages.niveau));
+  }
+  for (const b of zoneCouleurs.children) {
+    b.classList.toggle("choisi", b.dataset.valeur === reglages.couleur);
+    b.setAttribute("aria-checked", String(b.dataset.valeur === reglages.couleur));
+  }
+  for (const b of zonePersos.children) {
+    b.classList.toggle("choisi", b.dataset.valeur === reglages.personnage);
+    b.setAttribute("aria-checked", String(b.dataset.valeur === reglages.personnage));
+    const ctx = preparerToile(b.firstChild, 70, 70);
+    dessinerPersonnage(ctx, b.dataset.valeur, 5, 5, 1, COULEURS[reglages.couleur]);
+  }
+  const ctx = preparerToile(mascotte, 56, 56);
+  dessinerPersonnage(ctx, reglages.personnage, 2, 2, 0.88, COULEURS[reglages.couleur]);
+}
+
+function construireChoix() {
+  // Crée les boutons des murs, des couleurs et des personnages.
+  const creer = (parent, valeur, role) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.dataset.valeur = valeur;
+    parent.appendChild(b);
+    return b;
+  };
+  for (const nom of Object.keys(NIVEAUX)) {
+    const b = creer(zoneNiveaux, nom);
+    b.textContent = nom;
+    b.addEventListener("click", () => { reglages.niveau = nom; actualiserChoix(); });
+  }
+  for (const nom of COULEURS_NOMS) {
+    const b = creer(zoneCouleurs, nom);
+    b.style.background = "linear-gradient(180deg, " + COULEURS[nom][1] + ", " + COULEURS[nom][0] + ")";
+    b.setAttribute("aria-label", nom);
+    b.title = nom;
+    b.addEventListener("click", () => { reglages.couleur = nom; actualiserChoix(); });
+  }
+  for (const nom of PERSONNAGES) {
+    const b = creer(zonePersos, nom);
+    b.appendChild(document.createElement("canvas"));
+    b.setAttribute("aria-label", nom);
+    b.title = nom;
+    b.addEventListener("click", () => { reglages.personnage = nom; actualiserChoix(); });
+  }
+}
+
+function montrerConfig() {
+  // Affiche le menu avec les derniers réglages choisis.
+  enJeu = false;
+  arreterTout();
+  numeroPartie += 1;
+  ecranJeu.hidden = true;
+  ecranAdieu.hidden = true;
+  ecranConfig.hidden = false;
+  remplirChamps();
+  afficherErreurConfig("");
+  majLimites();
+  actualiserChoix();
+  champTaille.focus();
+  champTaille.select();
+}
+
+function entreeTaille() {
+  // Entrée dans la case de la taille : on vérifie, on ajuste les limites, puis on passe aux colonnes.
+  const t = tailleSaisie();
+  if (t === null) {
+    afficherErreurConfig(messageLimites("taille", 0, 0, 0));
+    champTaille.select();
+    return;
+  }
+  majLimites();
+  const { maxiColonnes, maxiLignes } = limitesCourantes();
+  const c = ajusterAuMaximum(champColonnes.value, maxiColonnes);
+  const l = ajusterAuMaximum(champLignes.value, maxiLignes);
+  champColonnes.value = c.valeur;
+  champLignes.value = l.valeur;
+  afficherErreurConfig(c.ajuste || l.ajuste ? "Colonnes ou lignes ramenées au maximum possible." : "", true);
+  champColonnes.focus();
+  champColonnes.select();
+}
+
+function entreeChamp(champ, suivant) {
+  // Entrée dans la case des colonnes ou des lignes : on vérifie, puis on passe à la suivante.
+  const { t, maxiColonnes, maxiLignes } = limitesCourantes();
+  const nom = champ === champColonnes ? "colonnes" : "lignes";
+  const n = lireEntier(champ.value);
+  const maxi = nom === "colonnes" ? maxiColonnes : maxiLignes;
+  if (n === null || n < MINI_CASES || n > maxi) {
+    const d = dimensions();
+    afficherErreurConfig(messageLimites(nom, t, d.largeur, d.hauteur));
+    champ.select();
+    return;
+  }
+  afficherErreurConfig("");
+  suivant.focus();
+  suivant.select();
+}
+
+function validerConfig() {
+  // Vérifie tous les réglages du menu ; s'ils sont bons, on les mémorise et on lance la partie.
+  const d = dimensions();
+  const r = validerReglages({
+    taille: champTaille.value, colonnes: champColonnes.value, lignes: champLignes.value, pieces: champPieces.value,
+    niveau: reglages.niveau, couleur: reglages.couleur, personnage: reglages.personnage, trace: champTrace.checked,
+  }, d.largeur, d.hauteur);
+  if (!r.ok) {
+    afficherErreurConfig(r.message);
+    const champ = { taille: champTaille, colonnes: champColonnes, lignes: champLignes, pieces: champPieces }[r.champ];
+    champ.focus();
+    champ.select();
+    return;
+  }
+  reglages = r.reglages;
+  ecrireStockage(reglages);
+  lancerPartie(nouvellePartie(reglages, hasardJeu));
+}
+
+function fermer() {
+  // Exit : un navigateur ne peut fermer que les fenêtres qu'il a lui-même ouvertes ; sinon, écran d'au revoir.
+  enJeu = false;
+  arreterTout();
+  numeroPartie += 1;
+  window.close();
+  ecranConfig.hidden = true;
+  ecranJeu.hidden = true;
+  ecranAdieu.hidden = false;
+  $("bouton-retour").focus();
+}
+
+
+// ============================ Branchements ============================
+
+function brancher() {
+  // Menu : Entrée passe de case en case, puis lance la partie
+  champTaille.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); entreeTaille(); } });
+  champTaille.addEventListener("input", majLimites);
+  champColonnes.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); entreeChamp(champColonnes, champLignes); } });
+  champLignes.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); entreeChamp(champLignes, champPieces); } });
+  champPieces.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); validerConfig(); } });
+  champTrace.addEventListener("change", () => { reglages.trace = champTrace.checked; });
+  // Entrée ailleurs dans le menu (après un clic sur un niveau, une couleur, un personnage…) : on lance la partie
+  ecranConfig.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.defaultPrevented) return;
+    if (e.target === boutonGo || e.target === boutonExit) return;     // ces boutons réagissent tout seuls
+    e.preventDefault();
+    validerConfig();
+  });
+  boutonGo.addEventListener("click", validerConfig);
+  boutonExit.addEventListener("click", fermer);
+  $("bouton-retour").addEventListener("click", montrerConfig);
+  window.addEventListener("resize", () => { if (!ecranConfig.hidden) majLimites(); });
+
+  // Partie : saisie, flèches, clic sur le damier
+  formulaire.addEventListener("submit", (e) => { e.preventDefault(); validerLigne(); });
+  cadre.addEventListener("click", () => saisie.focus());
+  document.addEventListener("keydown", (e) => {
+    if (!enJeu || e.ctrlKey || e.metaKey || e.altKey) return;
+    const direction = FLECHES[e.key];
+    if (direction !== undefined) {
+      // Quand une ligne est en cours de frappe, les flèches ← → déplacent le curseur dans la ligne ;
+      // la case vide, elles font un pas.
+      if (e.target === saisie && saisie.value !== "") return;
+      e.preventDefault();
+      fleche(direction);
+    } else if (e.key.length === 1 && document.activeElement === document.body) {
+      saisie.focus();                                                  // on tape sans avoir cliqué : la lettre va dans la saisie
+    }
+  });
+}
+
+function demarrer() {
+  const parametres = new URLSearchParams(window.location.search);
+  if (parametres.has("graine")) hasardJeu = creerHasard(Number(parametres.get("graine")));   // pour rejouer le même damier
+  const d = dimensions();
+  reglages = normaliserReglages(lireStockage(), d.largeur, d.hauteur);
+  construireChoix();
+  construireAide();
+  brancher();
+  montrerConfig();
+}
+
+demarrer();
+</script>
+
+</body>
+</html>

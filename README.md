@@ -7,6 +7,7 @@ Les jeux web de l'atelier : de petites applications à ouvrir dans un navigateur
 | Jeu | Pour quoi faire | Jouer |
 |---|---|---|
 | **Filou lit** | Apprendre à lire (CP), avec Filou le chat : sons, syllabes, mots et petites phrases | [atelier-lionel.github.io/Games/Filou/](https://atelier-lionel.github.io/Games/Filou/) |
+| **Robot** | Programmer un robot : commandes, boucles, pièces à ramasser sur un damier | [atelier-lionel.github.io/Games/Robot/](https://atelier-lionel.github.io/Games/Robot/) |
 
 ## Comment jouer
 
