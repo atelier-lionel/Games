@@ -105,6 +105,13 @@
 
   /* ---------- Accueil ---------- */
   $("#accueil-decor").innerHTML = DESSINS.decor("jardin");
+  // Version test (adresse /test/) : un tampon « TEST » sur l'accueil, pour ne pas la confondre avec la référence.
+  if (location.pathname.includes("/test/")) {
+    const tampon = document.createElement("div");
+    tampon.className = "tampon-test";
+    tampon.textContent = "TEST";
+    $("#ecran-accueil").appendChild(tampon);
+  }
   $("#btn-jouer").onclick = () => {
     VOIX.deverrouiller(); VOIX.contexte(); VOIX.son("pop");
     allerCarte(N[niveauActuel()].monde, true);

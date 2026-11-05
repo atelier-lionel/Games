@@ -78,6 +78,10 @@ button:focus-visible, [role="button"]:focus-visible { outline: 4px solid var(--o
 
 /* ---------- Accueil ---------- */
 .accueil-centre { position: relative; z-index: 2; margin: auto; display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; padding: 16px; }
+/* Tampon « TEST » : affiché seulement sur l'adresse /test/ (voir app.js) ; ne capte pas les touches */
+.tampon-test { position: absolute; z-index: 3; top: 7%; right: 6%; transform: rotate(-12deg); pointer-events: none;
+  padding: 4px 22px; border: 6px solid #D8342C; border-radius: 14px; color: #D8342C; background: rgba(255, 255, 255, .55);
+  font-size: clamp(36px, 8vw, 72px); font-weight: 800; letter-spacing: 6px; opacity: .85; }
 .accueil-centre .filou { width: min(300px, 62vw, 40vh); }
 .titre-jeu { font-size: clamp(56px, 10vw, 96px); line-height: .9; margin: 0; color: #fff; font-weight: 800;
   text-shadow: 0 5px 0 var(--sarcelle-fonce), 0 10px 24px rgba(0, 0, 0, .2); letter-spacing: 1px; }
