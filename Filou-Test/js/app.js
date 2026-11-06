@@ -10,8 +10,8 @@
 
   /* ---------- État sauvegardé dans le navigateur ----------
      Même clé et même format qu'en V1 (la progression déjà enregistrée est conservée) ; champs V2 ajoutés. */
-  // Version test (adresse contenant /test/) : clé séparée, pour ne pas écraser la progression de la référence.
-  const CLE = location.pathname.includes("/test/") ? "filou-lit-v1-test" : "filou-lit-v1";
+  // Version test (adresse du type …/Filou-Test/) : clé séparée, pour ne pas écraser la progression de la référence.
+  const CLE = /-test(\/|$)/i.test(location.pathname) ? "filou-lit-v1-test" : "filou-lit-v1";
   const MAISON_DEPART = { mur: "mur_creme", sol: "sol_parquet", vue: "vue_jardin" };
   function etatParDefaut() {
     return {
@@ -105,8 +105,8 @@
 
   /* ---------- Accueil ---------- */
   $("#accueil-decor").innerHTML = DESSINS.decor("jardin");
-  // Version test (adresse /test/) : un tampon « TEST » sur l'accueil, pour ne pas la confondre avec la référence.
-  if (location.pathname.includes("/test/")) {
+  // Version test (adresse …/Filou-Test/) : un tampon « TEST » sur l'accueil, pour ne pas la confondre avec la référence.
+  if (/-test(\/|$)/i.test(location.pathname)) {
     const tampon = document.createElement("div");
     tampon.className = "tampon-test";
     tampon.textContent = "TEST";

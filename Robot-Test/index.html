@@ -917,7 +917,7 @@ function resumeVictoire(etat) {
 
 // ---------- Réglages d'affichage ----------
 
-const CLE_STOCKAGE = "robot-web-v2-reglages" + (location.pathname.includes("/test/") ? "-test" : "");   // clé du localStorage (suffixe -test sur l'adresse /test/)
+const CLE_STOCKAGE = "robot-web-v2-reglages" + (/-test(\/|$)/i.test(location.pathname) ? "-test" : "");   // clé du localStorage (suffixe -test sur l'adresse …/Robot-Test/)
 const DUREE_PAS = 200;          // durée de l'animation d'un pas (ms), à l'intérieur des VITESSE (250 ms) entre deux actions
 const DUREE_CHOC = 400;         // animation du choc : demi-pas (1/4), puis secousses (3/4), en ms — comme la V2
 const SECOUSSES = [0.12, -0.12, 0.08, -0.08, 0.04, 0];   // le personnage tremble après le choc : décalages, en cases
