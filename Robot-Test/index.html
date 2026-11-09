@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Robot — V2</title>
-<link rel="icon" href="icone.png">
-<link rel="apple-touch-icon" href="icone.png">
+<link rel="icon" href="icone.png?v=3t1">
+<link rel="apple-touch-icon" href="icone.png?v=3t1">
 <style>
 /* ===================== Apparence ===================== */
 :root {
@@ -117,7 +117,9 @@ button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; 
 #plateau-cadre { position: relative; flex: none; }
 #plateau-cadre canvas { position: absolute; left: 0; top: 0; display: block; }
 #effets { pointer-events: none; }
-.bas { width: var(--largeur, 460px); max-width: 100%; }
+#zone-jeu { display: flex; flex-direction: column; align-items: center; max-width: 100%; }
+#cote { width: var(--largeur, 460px); max-width: 100%; }
+.bas { width: 100%; }
 #formulaire-ligne { display: flex; gap: 8px; }
 #saisie {
   flex: 1; min-width: 0; padding: 9px 14px; text-align: center; font: 600 1.35rem var(--code); color: var(--encre);
@@ -147,6 +149,90 @@ button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; 
 #aide .sep { color: #aaa; }
 #aide-detail { margin-top: 5px; text-align: center; font-size: 0.82rem; color: #8b867b; }
 
+/* ---------- V3 : jeu sans clavier (touches à l'écran, aucun champ de texte) ---------- */
+/* Choix « avec / sans clavier » dans le menu : mêmes boutons que les murs */
+#modes button {
+  padding: 6px 13px; font-size: 0.98rem; color: #333; background: var(--sable);
+  border: 2px solid transparent; border-radius: 10px; transition: background .15s;
+}
+#modes button:hover { background: #ddd6c4; }
+#modes button.choisi { color: #fff; background: var(--bleu); }
+/* Nombres du menu : en mode sans clavier, des boutons − et + remplacent la frappe */
+.saisie-nombre { display: flex; align-items: center; gap: 6px; }
+.saisie-nombre button {
+  display: none; width: 40px; height: 40px; padding: 0; font: 700 1.5rem/1 var(--police); color: var(--bleu);
+  background: #fff; border: 2px solid var(--bord); border-radius: 12px; cursor: pointer; touch-action: manipulation;
+  user-select: none; -webkit-user-select: none; box-shadow: 0 3px 0 var(--bord);
+}
+.saisie-nombre button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--bord); }
+body.sans-clavier .saisie-nombre button { display: block; }
+body.sans-clavier .champ { width: 4ch; border-color: transparent; background: transparent; font-size: 1.3rem; }
+body.sans-clavier .champ:focus { box-shadow: none; }
+body.sans-clavier .astuce { display: none; }
+
+/* Dans la partie : on cache la saisie et ses pastilles, on montre le programme et le pavé */
+#programme, #commandes { display: none; }
+body.sans-clavier #formulaire-ligne, body.sans-clavier #aide, body.sans-clavier #aide-detail { display: none; }
+body.sans-clavier #programme { display: block; }
+body.sans-clavier #commandes { display: grid; }
+#programme {
+  min-height: 56px; padding: 6px 10px; background: #fff; border: 2px solid var(--bord); border-radius: 14px;
+  font: 600 1.1rem/1.2 var(--code); color: var(--encre); text-align: left;
+}
+#programme .vide { display: inline-block; margin: 6px 4px; color: #a8a294; font-family: var(--police); font-weight: 500; }
+#programme .bloc { display: inline; padding: 3px 0; background: rgba(139, 92, 196, 0.10); border-radius: 10px; }
+.jeton { display: inline-block; margin: 3px; padding: 4px 10px; border-radius: 9px; white-space: nowrap; }
+.jeton.robot { color: var(--bleu); background: #dbe9f7; }
+.jeton.prendre { color: #7a5a06; background: #f6e7b4; }
+.jeton.repeat, .jeton.ferme { color: #5b3a8c; background: #e6dbf6; }
+.jeton.auto { opacity: 0.45; }
+.curseur { display: inline-block; width: 3px; height: 1.5em; margin-left: 2px; vertical-align: middle; background: var(--bleu-vif); border-radius: 2px; animation: clignote 1.1s steps(2, start) infinite; }
+@keyframes clignote { to { visibility: hidden; } }
+
+/* Le pavé. Quatre familles de touches, quatre aspects :
+   robot (bleu, plein) · nombres (blanc) · bloc : repeat / sortir (violet) · contrôle (gris, et Go en vert) */
+#commandes { --touche: clamp(46px, 8.2vh, 64px); gap: 14px 12px; margin-top: 8px; user-select: none; -webkit-user-select: none; }
+#commandes .groupe { display: grid; gap: 8px; grid-auto-rows: var(--touche); }
+#commandes button {
+  position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0;
+  font: 700 1.25rem var(--police); cursor: pointer; border-radius: 14px; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; transition: transform .08s, box-shadow .08s;
+  border: 2px solid var(--ombre, var(--bord)); box-shadow: 0 4px 0 var(--ombre, var(--bord));
+}
+#commandes button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ombre, var(--bord)); }
+#commandes .robot button { --ombre: #1d4a75; color: #fff; background: linear-gradient(180deg, #4a93d6, var(--bleu-vif)); font-size: 1.7rem; }
+#commandes .robot button.prendre { --ombre: #9a7208; color: #4a3500; background: linear-gradient(180deg, #f0cb55, var(--or)); font-size: 1.1rem; }
+#commandes .nombres button { --ombre: #cfc7b3; color: var(--encre); background: #fff; font: 700 1.6rem var(--code); }
+#commandes .bloc button { --ombre: #b7a2dd; color: #5b3a8c; background: #efe8fa; font-size: 1rem; }
+#commandes .controle button { --ombre: #bdb6a6; color: #55503f; background: var(--sable); font-size: 1.1rem; }
+#commandes .controle button.go { --ombre: #14602f; color: #fff; background: linear-gradient(180deg, #2fa05c, var(--vert)); font-size: 1.35rem; }
+#commandes .robot { grid-template-columns: repeat(3, 1fr); grid-template-areas: ". haut prendre" "gauche bas droite"; }
+#commandes .nombres { grid-template-columns: repeat(3, 1fr); }
+#commandes .nombres .zero { grid-column: 1 / -1; }
+#commandes .bloc, #commandes .controle { grid-template-columns: 1fr; }
+#commandes [data-touche="up"] { grid-area: haut; }
+#commandes [data-touche="down"] { grid-area: bas; }
+#commandes [data-touche="left"] { grid-area: gauche; }
+#commandes [data-touche="right"] { grid-area: droite; }
+#commandes [data-touche="take"] { grid-area: prendre; }
+
+/* Pavé à droite du damier (écran plus large que haut : Mac, iPad à l'horizontale) */
+body.sans-clavier #ecran-jeu.pave-droite #zone-jeu { flex-direction: row; align-items: flex-start; gap: 22px; }
+body.sans-clavier #ecran-jeu.pave-droite #cote { width: 330px; }
+#ecran-jeu.pave-droite #commandes { grid-template-columns: 3fr 1fr; grid-template-areas: "robot bloc" "nombres controle"; }
+#ecran-jeu.pave-droite #commandes .bloc { grid-template-rows: repeat(2, var(--touche)); }
+#ecran-jeu.pave-droite #commandes .controle { grid-template-rows: repeat(4, var(--touche)); }
+/* Pavé sous le damier (écran plus haut que large : iPad à la verticale) */
+#ecran-jeu:not(.pave-droite) #commandes { grid-template-columns: auto 1fr auto; grid-template-areas: "nombres nombres nombres" "robot bloc controle"; }
+#ecran-jeu:not(.pave-droite) #commandes .robot { grid-template-columns: repeat(3, calc(var(--touche) * 1.1)); }
+#ecran-jeu:not(.pave-droite) #commandes .controle { grid-template-columns: repeat(2, calc(var(--touche) * 1.35)); }
+#ecran-jeu:not(.pave-droite) #commandes .nombres { grid-template-columns: repeat(10, 1fr); }
+#ecran-jeu:not(.pave-droite) #commandes .nombres .zero { grid-column: auto; }
+#commandes .robot { grid-area: robot; }
+#commandes .nombres { grid-area: nombres; }
+#commandes .bloc { grid-area: bloc; }
+#commandes .controle { grid-area: controle; }
+
 /* ---------- Au revoir ---------- */
 #ecran-adieu { margin-top: 12vh; text-align: center; }
 #ecran-adieu h2 { font-size: 2rem; color: var(--bleu); margin: 0 0 8px; }
@@ -159,6 +245,7 @@ button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; 
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  .curseur { animation: none; }
 }
 </style>
 </head>
@@ -175,19 +262,37 @@ button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; 
     </div>
     <div class="grille-config">
       <label class="etiquette" for="champ-taille">Taille des cases ? (20 à 60)</label>
-      <input class="champ" id="champ-taille" type="text" inputmode="numeric" autocomplete="off" maxlength="3">
+      <div class="saisie-nombre">
+        <button type="button" data-champ="taille" data-pas="-5" aria-label="moins">−</button>
+        <input class="champ" id="champ-taille" type="text" inputmode="numeric" autocomplete="off" maxlength="3">
+        <button type="button" data-champ="taille" data-pas="5" aria-label="plus">+</button>
+      </div>
       <label class="etiquette" for="champ-colonnes" id="texte-colonnes">Combien de colonnes ?</label>
-      <input class="champ" id="champ-colonnes" type="text" inputmode="numeric" autocomplete="off" maxlength="4">
+      <div class="saisie-nombre">
+        <button type="button" data-champ="colonnes" data-pas="-1" aria-label="moins">−</button>
+        <input class="champ" id="champ-colonnes" type="text" inputmode="numeric" autocomplete="off" maxlength="4">
+        <button type="button" data-champ="colonnes" data-pas="1" aria-label="plus">+</button>
+      </div>
       <label class="etiquette" for="champ-lignes" id="texte-lignes">Combien de lignes ?</label>
-      <input class="champ" id="champ-lignes" type="text" inputmode="numeric" autocomplete="off" maxlength="4">
+      <div class="saisie-nombre">
+        <button type="button" data-champ="lignes" data-pas="-1" aria-label="moins">−</button>
+        <input class="champ" id="champ-lignes" type="text" inputmode="numeric" autocomplete="off" maxlength="4">
+        <button type="button" data-champ="lignes" data-pas="1" aria-label="plus">+</button>
+      </div>
       <label class="etiquette" for="champ-pieces">Combien de pièces ? (0 à 10)</label>
-      <input class="champ" id="champ-pieces" type="text" inputmode="numeric" autocomplete="off" maxlength="3">
+      <div class="saisie-nombre">
+        <button type="button" data-champ="pieces" data-pas="-1" aria-label="moins">−</button>
+        <input class="champ" id="champ-pieces" type="text" inputmode="numeric" autocomplete="off" maxlength="3">
+        <button type="button" data-champ="pieces" data-pas="1" aria-label="plus">+</button>
+      </div>
       <span class="etiquette" id="etiquette-murs">Murs</span>
       <div class="choix" id="niveaux" role="radiogroup" aria-labelledby="etiquette-murs"></div>
       <span class="etiquette" id="etiquette-couleur">Couleur</span>
       <div class="choix" id="couleurs" role="radiogroup" aria-labelledby="etiquette-couleur"></div>
       <span class="etiquette" id="etiquette-perso">Personnage</span>
       <div class="choix" id="personnages" role="radiogroup" aria-labelledby="etiquette-perso"></div>
+      <span class="etiquette" id="etiquette-mode">Clavier</span>
+      <div class="choix" id="modes" role="radiogroup" aria-labelledby="etiquette-mode"></div>
       <span></span>
       <label class="case"><input type="checkbox" id="champ-trace"> Laisser une trace</label>
     </div>
@@ -202,19 +307,49 @@ button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; 
   <!-- ============ Partie ============ -->
   <section id="ecran-jeu" hidden>
     <div id="compteur" role="status"></div>
-    <div id="plateau-cadre">
-      <canvas id="plateau" aria-label="Le damier"></canvas>
-      <canvas id="effets" aria-hidden="true"></canvas>
-    </div>
-    <div class="bas" id="bas">
-      <form id="formulaire-ligne" autocomplete="off">
-        <input id="saisie" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Tes instructions">
-        <button type="submit" class="bouton principal" id="bouton-ligne">Go</button>
-      </form>
-      <div id="bande" aria-hidden="true"></div>
-      <div id="message" role="alert"></div>
-      <div id="aide"></div>
-      <div id="aide-detail"></div>
+    <div id="zone-jeu">
+      <div id="plateau-cadre">
+        <canvas id="plateau" aria-label="Le damier"></canvas>
+        <canvas id="effets" aria-hidden="true"></canvas>
+      </div>
+      <div id="cote">
+        <div class="bas" id="bas">
+          <form id="formulaire-ligne" autocomplete="off">
+            <input id="saisie" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Tes instructions">
+            <button type="submit" class="bouton principal" id="bouton-ligne">Go</button>
+          </form>
+          <div id="programme" aria-label="Ton programme"></div>
+          <div id="bande" aria-hidden="true"></div>
+          <div id="message" role="alert"></div>
+          <div id="aide"></div>
+          <div id="aide-detail"></div>
+        </div>
+        <div id="commandes" aria-label="Touches">
+          <div class="groupe robot">
+            <button type="button" data-touche="up" aria-label="up">↑</button>
+            <button type="button" data-touche="left" aria-label="left">←</button>
+            <button type="button" data-touche="down" aria-label="down">↓</button>
+            <button type="button" data-touche="right" aria-label="right">→</button>
+            <button type="button" data-touche="take" class="prendre">take</button>
+          </div>
+          <div class="groupe bloc">
+            <button type="button" data-touche="repeat">repeat</button>
+            <button type="button" data-touche="sortir">sortir</button>
+          </div>
+          <div class="groupe nombres">
+            <button type="button" data-touche="1">1</button><button type="button" data-touche="2">2</button><button type="button" data-touche="3">3</button>
+            <button type="button" data-touche="4">4</button><button type="button" data-touche="5">5</button><button type="button" data-touche="6">6</button>
+            <button type="button" data-touche="7">7</button><button type="button" data-touche="8">8</button><button type="button" data-touche="9">9</button>
+            <button type="button" data-touche="0" class="zero">0</button>
+          </div>
+          <div class="groupe controle">
+            <button type="button" data-touche="effacer" aria-label="effacer le dernier">⌫</button>
+            <button type="button" data-touche="toutEffacer" aria-label="tout effacer">✕</button>
+            <button type="button" data-touche="menu">Menu</button>
+            <button type="button" data-touche="go" class="go">Go</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="annonce" class="visuellement-cache" aria-live="polite"></div>
   </section>
@@ -234,7 +369,7 @@ button:focus-visible { outline: 3px solid var(--bleu-vif); outline-offset: 2px; 
 //  Rien dans ce bloc ne dessine, ne lit la page (DOM) ni n'écrit dans localStorage :
 //  chaque fonction reçoit ses données en paramètres et renvoie un résultat.
 //  C'est ce qui permet de la tester sans écran (voir tests/test_logique.mjs).
-//  Port fidèle de robot_v2.command (V2 Python) ; les écarts sont listés dans MANUEL_robot_web.md.
+//  Port fidèle de Robot_Python_V2.command (V2 Python) ; les écarts sont listés dans Manuel_Robot.md.
 //
 //  Quelques constructions JavaScript, pour qui vient de Python :
 //   - un Set est un ensemble, un Map un dictionnaire ; « new Set(autre) » en fait une copie ;
@@ -265,6 +400,7 @@ const PERSONNAGES = ["robot", "chat", "fusée"];
 const REGLAGES_PAR_DEFAUT = {
   taille: 30, colonnes: 30, lignes: 30, pieces: 5,
   niveau: "moyen", couleur: "bleu", personnage: "robot", trace: false,
+  clavier: true,    // V3 : true = on tape au clavier ; false = on touche les touches de l'écran (iPad), aucun champ de texte
 };
 
 
@@ -416,6 +552,7 @@ function validerReglages(brut, largeurFenetre, hauteurFenetre) {
     reglages: {
       taille: t, colonnes: c, lignes: l, pieces: n,
       niveau: brut.niveau, couleur: brut.couleur, personnage: brut.personnage, trace: Boolean(brut.trace),
+      clavier: brut.clavier !== false,
     },
   };
 }
@@ -439,6 +576,7 @@ function normaliserReglages(brut, largeurFenetre, hauteurFenetre) {
     couleur: COULEURS_NOMS.includes(source.couleur) ? source.couleur : d.couleur,
     personnage: PERSONNAGES.includes(source.personnage) ? source.personnage : d.personnage,
     trace: typeof source.trace === "boolean" ? source.trace : d.trace,
+    clavier: typeof source.clavier === "boolean" ? source.clavier : d.clavier,
   };
 }
 
@@ -740,6 +878,91 @@ function lireCommandes(texteBrut) {
 }
 
 
+// ---------- Éditeur de blocs (jeu sans clavier, V3) ----------
+// Sans clavier, le programme se construit en touchant des touches. L'éditeur garde une liste de jetons
+// (état jamais modifié sur place) et en fabrique le texte que lireCommandes comprend déjà :
+// aucune règle du jeu n'est dupliquée ici.
+//  - jeton : { t: "move", mot, n } | { t: "take" } | { t: "repeat", n } | { t: "ferme" }
+//    (« n » : le nombre sous forme de texte, vide tant qu'aucun chiffre n'est touché) ;
+//  - « repeat » ouvre un bloc : la « ( » est ajoutée toute seule ; la touche « sortir » ferme (« ) ») ;
+//  - un chiffre complète le nombre du dernier jeton (mouvement ou repeat) ; ailleurs il est ignoré.
+const TOUCHES_MOUVEMENT = Object.keys(DIRECTIONS);                // left, right, up, down
+const TOUCHES_CHIFFRE = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const CHIFFRES_MAXI = 3;                                           // un nombre fait au plus 3 chiffres
+
+function editeurVide() {
+  return { jetons: [], avis: "" };    // avis : courte remarque quand une touche est refusée
+}
+
+function editeurDansBloc(ed) {
+  // Vrai si un bloc repeat est ouvert (sa parenthèse fermante n'est pas encore posée).
+  let ouvert = false;
+  for (const j of ed.jetons) {
+    if (j.t === "repeat") ouvert = true;
+    else if (j.t === "ferme") ouvert = false;
+  }
+  return ouvert;
+}
+
+function editeurAppuyer(ed, touche) {
+  // Renvoie un nouvel éditeur après l'appui sur une touche :
+  //  left right up down take repeat sortir  0…9  effacer  toutEffacer
+  const jetons = ed.jetons.slice();
+  const dernier = jetons[jetons.length - 1];
+  const refus = (avis) => ({ jetons: ed.jetons, avis });
+  const ok = () => ({ jetons, avis: "" });
+
+  if (TOUCHES_MOUVEMENT.includes(touche)) {
+    jetons.push({ t: "move", mot: touche, n: "" });
+    return ok();
+  }
+  if (touche === PRENDRE) {
+    jetons.push({ t: "take" });
+    return ok();
+  }
+  if (touche === "repeat") {
+    if (editeurDansBloc(ed)) return refus("pas de repeat dans un repeat");
+    jetons.push({ t: "repeat", n: "" });
+    return ok();
+  }
+  if (touche === "sortir") {
+    if (!editeurDansBloc(ed)) return refus("pas de bloc à fermer");
+    jetons.push({ t: "ferme" });
+    return ok();
+  }
+  if (TOUCHES_CHIFFRE.includes(touche)) {
+    if (!dernier || (dernier.t !== "move" && dernier.t !== "repeat")) return refus("un chiffre va après une direction ou repeat");
+    if (dernier.n.length >= CHIFFRES_MAXI) return refus("nombre trop long");
+    const n = dernier.n === "0" ? touche : dernier.n + touche;      // pas de zéro devant : 0 puis 5 donne 5
+    jetons[jetons.length - 1] = { ...dernier, n };
+    return ok();
+  }
+  if (touche === "effacer") {
+    if (!dernier) return refus("rien à effacer");
+    if ((dernier.t === "move" || dernier.t === "repeat") && dernier.n !== "") {
+      jetons[jetons.length - 1] = { ...dernier, n: dernier.n.slice(0, -1) };   // d'abord le dernier chiffre
+    } else {
+      jetons.pop();                                                  // puis le jeton entier (un « ferme » rouvre le bloc)
+    }
+    return ok();
+  }
+  if (touche === "toutEffacer") return editeurVide();
+  return refus("touche inconnue");
+}
+
+function editeurTexte(ed) {
+  // Le programme sous forme de texte, prêt pour lireCommandes. Un bloc resté ouvert est fermé tout seul.
+  const morceaux = ed.jetons.map((j) => {
+    if (j.t === "move") return j.n ? j.mot + " " + j.n : j.mot;
+    if (j.t === "take") return PRENDRE;
+    if (j.t === "repeat") return "repeat " + j.n + " (";             // « repeat  ( » si pas de nombre : lireCommandes le signale
+    return ")";
+  });
+  if (editeurDansBloc(ed)) morceaux.push(")");
+  return morceaux.join(" ").replace(/\(\s+\)/g, "()");
+}
+
+
 // ---------- Partie : état et règles du jeu ----------
 // L'état d'une partie est un objet : { damier, murs, tresors, depart, x, y, nbPieces, ramasses, points,
 // instructions, pas, minimum }. Aucune fonction ne le modifie : chacune en renvoie une copie mise à jour.
@@ -889,7 +1112,7 @@ function texteCompteur(etat) {
   return texte;
 }
 
-function resumeVictoire(etat) {
+function resumeVictoire(etat, clavier = true) {
   // Textes du panneau « Bravo ! ». Écart voulu avec la V2 : « 1 instruction » au singulier.
   const pluriel = (n, mot) => n + " " + mot + (n > 1 ? "s" : "");
   const estMinimum = etat.pas === etat.minimum;
@@ -898,7 +1121,7 @@ function resumeVictoire(etat) {
     detail: pluriel(etat.nbPieces, "pièce") + "  ·  " + pluriel(etat.instructions, "instruction") + "  ·  " + etat.pas + " pas",
     estMinimum,
     comparaison: estMinimum ? "C'est le minimum !" : "Minimum possible : " + etat.minimum + " pas",
-    rejouer: "Tape « end » pour rejouer",
+    rejouer: clavier ? "Tape « end » pour rejouer" : "Touche « Menu » pour rejouer",
   };
 }
 </script>
@@ -960,6 +1183,10 @@ const AIDE = [
   { texte: "end", insere: "end" },
 ];
 const AIDE_DETAIL = "Tape tes instructions puis Entrée  ·  flèches : un pas  ·  clique une pastille pour l'insérer  ·  take prend la pièce sous le personnage";
+const PAVE_LARGEUR = 350;       // place prise à droite du damier par le pavé (touches + marge), en pixels
+const RESERVE_DROITE = 120;     // pavé à droite : la hauteur réservée est plus petite que celle de la V2 (pas de saisie sous le damier)
+const RESERVE_DESSOUS = 160;    // pavé dessous : hauteur en moins, pour les touches (voir dimensions)
+const MODES = [["clavier", "Avec clavier"], ["tactile", "Sans clavier"]];
 const FLECHES = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
 const sansAnimation = window.matchMedia("(prefers-reduced-motion: reduce)").matches;   // réglage du Mac « réduire les animations »
 
@@ -989,6 +1216,10 @@ const cadre = $("plateau-cadre");
 const toilePlateau = $("plateau");
 const toileEffets = $("effets");
 const bas = $("bas");
+const cote = $("cote");
+const programme = $("programme");
+const commandes = $("commandes");
+const zoneModes = $("modes");
 const saisie = $("saisie");
 const formulaire = $("formulaire-ligne");
 const bande = $("bande");
@@ -1169,7 +1400,7 @@ function installerToiles() {
   cadre.style.height = geo.hauteur + "px";
   ctxPlateau = preparerToile(toilePlateau, geo.largeur, geo.hauteur);
   ctxEffets = preparerToile(toileEffets, geo.largeur, geo.hauteur);
-  bas.style.setProperty("--largeur", Math.max(geo.largeur, 460) + "px");
+  cote.style.setProperty("--largeur", Math.max(geo.largeur, 460) + "px");
 }
 
 function dessinerPlateau() {
@@ -1581,7 +1812,7 @@ function afficherBravo() {
   // Panneau de victoire, posé sur le damier.
   if (!enJeu || !gagne(etat)) return;
   const maintenant = performance.now();
-  const resume = resumeVictoire(etat);
+  const resume = resumeVictoire(etat, reglagesPartie.clavier);
   effets.push({ type: "bravo", debut: maintenant, duree: Infinity, resume });
   if (!sansAnimation) confettis(maintenant);
   annonce.textContent = resume.titre + " " + resume.detail + ". " + resume.comparaison;
@@ -1772,18 +2003,17 @@ function executer(actions, i) {
   }
 }
 
-function validerLigne() {
-  // Entrée (ou bouton Go) dans la case de saisie.
-  if (!enJeu) return;
-  const texte = saisie.value;
+function soumettre(texte) {
+  // Valide une ligne de programme (tapée, ou construite avec les touches). Renvoie true si elle doit être
+  // effacée de la saisie, false si elle est refusée (elle reste pour être corrigée).
+  if (!enJeu) return false;
   const r = accepterLigne(etat, texte);
-  if (r.fin) { montrerConfig(); return; }                // « end » : retour au menu
-  if (r.ignoree) { saisie.value = ""; return; }          // partie gagnée : on attend « end »
-  if (r.refusee) {                                       // la ligne reste dans la case, pour être corrigée
+  if (r.fin) { montrerConfig(); return true; }           // « end » : retour au menu
+  if (r.ignoree) return true;                            // partie gagnée : on attend « end »
+  if (r.refusee) {
     message.textContent = r.message;
-    return;
+    return false;
   }
-  saisie.value = "";
   message.textContent = "";
   etat = r.etat;
   afficherCompteur();
@@ -1791,6 +2021,72 @@ function validerLigne() {
   ligneEnCours = { texte, actions: r.actions };
   afficherBande(null);
   if (r.actions.length > 0) executer(r.actions, 0);
+  return true;
+}
+
+function validerLigne() {
+  // Entrée (ou bouton Go) dans la case de saisie (mode avec clavier).
+  if (soumettre(saisie.value)) saisie.value = "";
+}
+
+// ---------- Le pavé (mode sans clavier) ----------
+
+let editeur = editeurVide();     // le programme en cours de construction
+
+function afficherProgramme() {
+  // Dessine le programme construit : une pastille par instruction, le bloc repeat teinté, un curseur à la fin.
+  programme.replaceChildren();
+  if (editeur.jetons.length === 0) {
+    const v = document.createElement("span");
+    v.className = "vide";
+    v.textContent = "Touche tes instructions…";
+    programme.append(v, curseur());
+    return;
+  }
+  let parent = programme;
+  const pastille = (classe, texte) => {
+    const s = document.createElement("span");
+    s.className = "jeton " + classe;
+    s.textContent = texte;                               // textContent : jamais interprété comme du HTML
+    return s;
+  };
+  for (const j of editeur.jetons) {
+    if (j.t === "move") parent.appendChild(pastille("robot", j.n ? j.mot + " " + j.n : j.mot));
+    else if (j.t === "take") parent.appendChild(pastille("prendre", PRENDRE));
+    else if (j.t === "repeat") {
+      const bloc = document.createElement("span");
+      bloc.className = "bloc";
+      programme.appendChild(bloc);
+      parent = bloc;
+      bloc.appendChild(pastille("repeat", "repeat " + (j.n || "_") + " ("));
+    } else {                                             // ferme
+      parent.appendChild(pastille("ferme", ")"));
+      parent = programme;
+    }
+  }
+  if (editeurDansBloc(editeur)) parent.appendChild(pastille("ferme auto", ")"));   // fermée toute seule au Go
+  programme.appendChild(curseur());
+}
+
+function curseur() {
+  const c = document.createElement("span");
+  c.className = "curseur";
+  return c;
+}
+
+function toucher(touche) {
+  // Appui sur une touche du pavé.
+  if (!enJeu) return;
+  if (touche === "menu") { montrerConfig(); return; }
+  if (touche === "go") {
+    const texte = editeurTexte(editeur);
+    if (texte === "" && !gagne(etat)) return;
+    if (soumettre(texte)) { editeur = editeurVide(); afficherProgramme(); }
+    return;
+  }
+  editeur = editeurAppuyer(editeur, touche);
+  message.textContent = editeur.avis;
+  afficherProgramme();
 }
 
 function fleche(direction) {
@@ -1867,9 +2163,13 @@ function lancerPartie(nouvelEtat) {
   bande.replaceChildren();
   annonce.textContent = "";
   saisie.value = "";
+  editeur = editeurVide();
+  afficherProgramme();
+  ecranJeu.classList.toggle("pave-droite", paveADroite());
   aRedessiner = true;
   demarrerBoucle();
-  saisie.focus();
+  if (reglagesPartie.clavier) saisie.focus();            // sans clavier : jamais de focus, le clavier de l'iPad ne monte pas
+  else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 }
 
 function arreterTout() {
@@ -1885,10 +2185,20 @@ function arreterTout() {
 
 // ============================ Le menu ============================
 
+function paveADroite() {
+  // Le pavé se place à droite du damier si la fenêtre est plus large que haute, sinon dessous.
+  return document.documentElement.clientWidth > window.innerHeight;
+}
+
 function dimensions() {
   // Place disponible dans la fenêtre. La hauteur est corrigée de la différence entre cette mise en page
   // et les 220 pixels que la logique réserve (comme la V2 le faisait pour l'écran).
-  return { largeur: document.documentElement.clientWidth, hauteur: window.innerHeight - SURPLUS_VERTICAL };
+  const largeur = document.documentElement.clientWidth;
+  const hauteur = window.innerHeight - SURPLUS_VERTICAL;
+  if (reglages.clavier) return { largeur, hauteur };
+  // Sans clavier : le pavé prend de la place, à droite du damier (écran plus large que haut) ou dessous.
+  if (paveADroite()) return { largeur: largeur - PAVE_LARGEUR, hauteur: window.innerHeight + RESERVE_DROITE };
+  return { largeur, hauteur: window.innerHeight - RESERVE_DESSOUS };
 }
 
 function lireStockage() {
@@ -1954,6 +2264,11 @@ function actualiserChoix() {
     b.classList.toggle("choisi", b.dataset.valeur === reglages.niveau);
     b.setAttribute("aria-checked", String(b.dataset.valeur === reglages.niveau));
   }
+  for (const b of zoneModes.children) {
+    const choisi = (b.dataset.valeur === "clavier") === reglages.clavier;
+    b.classList.toggle("choisi", choisi);
+    b.setAttribute("aria-checked", String(choisi));
+  }
   for (const b of zoneCouleurs.children) {
     b.classList.toggle("choisi", b.dataset.valeur === reglages.couleur);
     b.setAttribute("aria-checked", String(b.dataset.valeur === reglages.couleur));
@@ -1983,6 +2298,16 @@ function construireChoix() {
     b.textContent = nom;
     b.addEventListener("click", () => { reglages.niveau = nom; actualiserChoix(); });
   }
+  for (const [valeur, texte] of MODES) {
+    const b = creer(zoneModes, valeur);
+    b.textContent = texte;
+    b.addEventListener("click", () => {
+      reglages.clavier = valeur === "clavier";
+      appliquerMode();
+      majLimites();
+      actualiserChoix();
+    });
+  }
   for (const nom of COULEURS_NOMS) {
     const b = creer(zoneCouleurs, nom);
     b.style.background = "linear-gradient(180deg, " + COULEURS[nom][1] + ", " + COULEURS[nom][0] + ")";
@@ -1999,6 +2324,53 @@ function construireChoix() {
   }
 }
 
+function appliquerMode() {
+  // Mode sans clavier : les champs du menu ne se tapent plus (lecture seule, pas de clavier à l'écran) ;
+  // les boutons − et + les remplacent. La classe du body montre ou cache le pavé et la saisie.
+  document.body.classList.toggle("sans-clavier", !reglages.clavier);
+  if (!reglages.clavier && document.activeElement instanceof HTMLElement) document.activeElement.blur();   // rien ne garde le focus
+  for (const champ of [champTaille, champColonnes, champLignes, champPieces]) {
+    champ.readOnly = !reglages.clavier;
+    champ.setAttribute("inputmode", reglages.clavier ? "numeric" : "none");
+    champ.tabIndex = reglages.clavier ? 0 : -1;
+  }
+}
+
+function changerNombre(nomChamp, pas) {
+  // Boutons − et + du menu : change un nombre sans dépasser ses limites, puis recadre les autres.
+  const champs = { taille: champTaille, colonnes: champColonnes, lignes: champLignes, pieces: champPieces };
+  const courant = lireEntier(champs[nomChamp].value);
+  const base = courant === null ? reglages[nomChamp] : courant;
+  const { t, maxiColonnes, maxiLignes } = limitesCourantes();
+  const maxis = { taille: TAILLE_MAXI, colonnes: maxiColonnes, lignes: maxiLignes, pieces: PIECES_MAXI };
+  const minis = { taille: TAILLE_MINI, colonnes: MINI_CASES, lignes: MINI_CASES, pieces: 0 };
+  champs[nomChamp].value = String(Math.min(maxis[nomChamp], Math.max(minis[nomChamp], base + pas)));
+  // Après un changement de taille ou de damier, tout doit rester dans les limites
+  const lim = limitesCourantes();
+  const c = Math.min(lim.maxiColonnes, Math.max(MINI_CASES, lireEntier(champColonnes.value) ?? reglages.colonnes));
+  const l = Math.min(lim.maxiLignes, Math.max(MINI_CASES, lireEntier(champLignes.value) ?? reglages.lignes));
+  champColonnes.value = String(c);
+  champLignes.value = String(l);
+  champPieces.value = String(Math.min(Math.min(PIECES_MAXI, c * l - 1), lireEntier(champPieces.value) ?? reglages.pieces));
+  afficherErreurConfig("");
+  majLimites();
+}
+
+function brancherPas(bouton) {
+  // Un appui change le nombre d'un cran ; en restant appuyé, il défile (comme une touche répétée).
+  let attente = null;
+  let repetition = null;
+  const agir = () => changerNombre(bouton.dataset.champ, Number(bouton.dataset.pas));
+  const arreter = () => { clearTimeout(attente); clearInterval(repetition); attente = repetition = null; };
+  bouton.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    agir();
+    attente = setTimeout(() => { repetition = setInterval(agir, 90); }, 400);
+  });
+  for (const nom of ["pointerup", "pointerleave", "pointercancel"]) bouton.addEventListener(nom, arreter);
+  bouton.addEventListener("click", (e) => { if (e.detail === 0) agir(); });      // au clavier (Entrée, espace) : un cran
+}
+
 function montrerConfig() {
   // Affiche le menu avec les derniers réglages choisis.
   enJeu = false;
@@ -2007,12 +2379,15 @@ function montrerConfig() {
   ecranJeu.hidden = true;
   ecranAdieu.hidden = true;
   ecranConfig.hidden = false;
+  appliquerMode();
   remplirChamps();
   afficherErreurConfig("");
   majLimites();
   actualiserChoix();
-  champTaille.focus();
-  champTaille.select();
+  if (reglages.clavier) {                                // sans clavier : aucun champ n'est sélectionné
+    champTaille.focus();
+    champTaille.select();
+  }
 }
 
 function entreeTaille() {
@@ -2056,7 +2431,7 @@ function validerConfig() {
   const d = dimensions();
   const r = validerReglages({
     taille: champTaille.value, colonnes: champColonnes.value, lignes: champLignes.value, pieces: champPieces.value,
-    niveau: reglages.niveau, couleur: reglages.couleur, personnage: reglages.personnage, trace: champTrace.checked,
+    niveau: reglages.niveau, couleur: reglages.couleur, personnage: reglages.personnage, trace: champTrace.checked, clavier: reglages.clavier,
   }, d.largeur, d.hauteur);
   if (!r.ok) {
     afficherErreurConfig(r.message);
@@ -2105,9 +2480,15 @@ function brancher() {
   $("bouton-retour").addEventListener("click", montrerConfig);
   window.addEventListener("resize", () => { if (!ecranConfig.hidden) majLimites(); });
 
-  // Partie : saisie, flèches, clic sur le damier
+  for (const b of document.querySelectorAll(".saisie-nombre button")) brancherPas(b);
+  window.addEventListener("resize", () => {
+    if (!ecranJeu.hidden) ecranJeu.classList.toggle("pave-droite", paveADroite());   // on tourne l'iPad : le pavé change de côté
+  });
+
+  // Partie : saisie, flèches, clic sur le damier, pavé
   formulaire.addEventListener("submit", (e) => { e.preventDefault(); validerLigne(); });
-  cadre.addEventListener("click", () => saisie.focus());
+  cadre.addEventListener("click", () => { if (reglagesPartie.clavier) saisie.focus(); });
+  for (const b of commandes.querySelectorAll("button")) b.addEventListener("click", () => toucher(b.dataset.touche));
   document.addEventListener("keydown", (e) => {
     if (!enJeu || e.ctrlKey || e.metaKey || e.altKey) return;
     const direction = FLECHES[e.key];
@@ -2117,7 +2498,7 @@ function brancher() {
       if (e.target === saisie && saisie.value !== "") return;
       e.preventDefault();
       fleche(direction);
-    } else if (e.key.length === 1 && document.activeElement === document.body) {
+    } else if (e.key.length === 1 && reglagesPartie.clavier && document.activeElement === document.body) {
       saisie.focus();                                                  // on tape sans avoir cliqué : la lettre va dans la saisie
     }
   });
@@ -2126,8 +2507,12 @@ function brancher() {
 function demarrer() {
   const parametres = new URLSearchParams(window.location.search);
   if (parametres.has("graine")) hasardJeu = creerHasard(Number(parametres.get("graine")));   // pour rejouer le même damier
+  // Premier lancement : sans clavier sur un écran tactile (iPad), avec clavier sinon ; ensuite, le choix mémorisé.
+  const stock = lireStockage();
+  const clavier = (stock !== null && typeof stock.clavier === "boolean") ? stock.clavier : !window.matchMedia("(pointer: coarse)").matches;
+  reglages = { ...REGLAGES_PAR_DEFAUT, clavier };        // d'abord le mode : les dimensions en dépendent
   const d = dimensions();
-  reglages = normaliserReglages(lireStockage(), d.largeur, d.hauteur);
+  reglages = { ...normaliserReglages(stock, d.largeur, d.hauteur), clavier };
   construireChoix();
   construireAide();
   brancher();
