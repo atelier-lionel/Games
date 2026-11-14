@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calcul">
+<title>Calcul</title>
+<style>
+/* ===================== Apparence ===================== */
+:root {
+  --bleu: #24527d;
+  --bleu-vif: #3b82c4;
+  --creme: #f4f1ea;
+  --sable: #e8e3d7;
+  --bord: #d6cfbf;
+  --encre: #2b2b2b;
+  --gris: #6f6a60;
+  --rouge: #c0392b;
+  --vert: #1e8449;
+  --police: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  height: 100dvh;                       /* dvh = hauteur réellement visible (barres de Safari déduites) */
+  background: var(--creme);
+  color: var(--encre);
+  font-family: var(--police);
+  overscroll-behavior: none;            /* pas d'effet « élastique » quand on tape vite */
+  -webkit-user-select: none; user-select: none;   /* un appui long ne sélectionne pas le texte */
+  -webkit-touch-callout: none;
+}
+button {
+  font: inherit; color: inherit;
+  border: 2px solid var(--bord); border-radius: 14px;
+  background: #fff; cursor: pointer;
+  touch-action: manipulation;           /* pas de zoom au double appui sur l'iPad */
+  -webkit-tap-highlight-color: transparent;
+}
+button:active { background: var(--sable); }
+[hidden] { display: none !important; }
+
+.ecran {
+  height: 100%;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: center;
+}
+
+/* ----- Écran des réglages ----- */
+#ecran-reglages { overflow-y: auto; }
+.reglages { width: 100%; max-width: 620px; margin: auto; display: flex; flex-direction: column; gap: 18px; }
+h1 { margin: 0; font-size: 2.4rem; color: var(--bleu); text-align: center; }
+h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gris); font-weight: 600; }
+.choix { display: flex; flex-wrap: wrap; gap: 8px; }
+.choix button { min-width: 56px; min-height: 52px; padding: 6px 14px; font-size: 1.25rem; }
+.choix button.actif { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.choix.large button { flex: 1; }
+/* les dix tables sur une ligne (deux lignes de cinq sur un écran étroit) */
+#choix-tables { display: grid; grid-template-columns: repeat(10, 1fr); }
+#choix-tables button { min-width: 0; padding: 6px 0; }
+@media (max-width: 560px) { #choix-tables { grid-template-columns: repeat(5, 1fr); } }
+.sous-reglage { margin-top: 10px; }
+.pas-a-pas { display: flex; align-items: center; gap: 14px; }
+.pas-a-pas button { width: 56px; height: 52px; font-size: 1.6rem; }
+.pas-a-pas output { font-size: 2rem; font-weight: 700; min-width: 2ch; text-align: center; color: var(--bleu); }
+.exemple { color: var(--gris); font-size: 1rem; margin: 8px 0 0; }
+.principal {
+  min-height: 64px; font-size: 1.6rem; font-weight: 700;
+  background: var(--vert); border-color: var(--vert); color: #fff;
+}
+.principal:active { background: #17693a; }
+.version { text-align: center; color: var(--gris); font-size: .85rem; margin: 0; }
+
+/* ----- Écran de jeu ----- */
+.barre { width: 100%; max-width: 980px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.barre button { padding: 8px 14px; font-size: 1rem; color: var(--gris); }
+#avancement { font-size: 1.5rem; font-weight: 600; color: var(--gris); }
+#chrono { font-size: 2rem; font-weight: 700; color: var(--bleu); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+#chrono.urgent { color: var(--rouge); }
+
+.plateau {
+  flex: 1; width: 100%; max-width: 980px; min-height: 0;
+  display: grid; grid-template-rows: 1fr auto; gap: 12px; align-items: center; justify-items: center;
+}
+.operation {
+  font-size: clamp(3rem, 15vw, 6.5rem); font-weight: 700;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  display: flex; align-items: center; gap: .25em;
+}
+.reponse {
+  display: inline-block; min-width: 2.3ch; padding: 0 .15em; text-align: center;
+  border: 4px solid var(--bleu-vif); border-radius: 18px; background: #fff; color: var(--bleu);
+}
+.reponse.vide { color: var(--bord); }
+.reponse.faux { border-color: var(--rouge); color: var(--rouge); animation: secousse .35s; }
+.reponse.juste { border-color: var(--vert); }
+@keyframes secousse {
+  20% { transform: translateX(-10px); } 40% { transform: translateX(10px); }
+  60% { transform: translateX(-6px); }  80% { transform: translateX(6px); }
+}
+@media (prefers-reduced-motion: reduce) { .reponse.faux { animation: none; } }
+
+.pave { width: 100%; max-width: 440px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pave button { min-height: clamp(60px, 10.5dvh, 104px); font-size: 2.2rem; font-weight: 600; }
+.pave .ok { background: var(--vert); border-color: var(--vert); color: #fff; }
+.pave .ok:active { background: #17693a; }
+.pave .effacer { color: var(--gris); }
+
+/* iPad tenu en largeur : l'opération à gauche, le pavé à droite */
+@media (orientation: landscape) and (min-width: 760px) {
+  .plateau { grid-template-rows: 1fr; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .operation { font-size: clamp(3rem, 9vw, 6.5rem); }
+  .pave button { min-height: clamp(60px, 16dvh, 120px); }
+}
+
+/* ----- Écran de fin ----- */
+.fin { margin: auto; width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 16px; text-align: center; }
+#fin-temps { font-size: 3.2rem; font-weight: 700; color: var(--bleu); font-variant-numeric: tabular-nums; }
+#fin-detail { font-size: 1.3rem; color: var(--gris); }
+.fin button { min-height: 60px; font-size: 1.4rem; }
+</style>
+</head>
+<body>
+
+<!-- RÉGLAGES : on définit l'exercice -->
+<section class="ecran" id="ecran-reglages">
+  <div class="reglages">
+    <h1>Calcul</h1>
+
+    <div>
+      <h2>Quelles additions ?</h2>
+      <div class="choix large" id="choix-mode"></div>
+      <div class="sous-reglage" id="reglage-tables">
+        <div class="choix" id="choix-tables"></div>
+        <p class="exemple" id="exemple-tables"></p>
+      </div>
+      <div class="sous-reglage" id="reglage-somme" hidden>
+        <div class="pas-a-pas">
+          <button id="somme-moins" aria-label="Diminuer la somme">−</button>
+          <output id="somme-valeur">5</output>
+          <button id="somme-plus" aria-label="Augmenter la somme">+</button>
+        </div>
+        <p class="exemple" id="exemple-somme"></p>
+      </div>
+    </div>
+
+    <div>
+      <h2>Combien d'opérations ?</h2>
+      <div class="choix" id="choix-nb"></div>
+    </div>
+
+    <div>
+      <h2>Temps maximum</h2>
+      <div class="choix" id="choix-chrono"></div>
+    </div>
+
+    <button class="principal" id="btn-partir">C'est parti !</button>
+    <p class="version" id="version"></p>
+  </div>
+</section>
+
+<!-- JEU : une opération à la fois, le chrono décompte -->
+<section class="ecran" id="ecran-jeu" hidden>
+  <div class="barre">
+    <button id="btn-arreter">✕ Arrêter</button>
+    <span id="avancement"></span>
+    <span id="chrono"></span>
+  </div>
+  <div class="plateau">
+    <div class="operation"><span id="enonce"></span><span class="reponse vide" id="reponse">?</span></div>
+    <div class="pave" id="pave"></div>
+  </div>
+</section>
+
+<!-- FIN : le chrono et le nombre d'erreurs -->
+<section class="ecran" id="ecran-fin" hidden>
+  <div class="fin">
+    <h1 id="fin-titre"></h1>
+    <div id="fin-temps"></div>
+    <div id="fin-detail"></div>
+    <button class="principal" id="btn-rejouer">Rejouer</button>
+    <button id="btn-reglages">Changer les réglages</button>
+  </div>
+</section>
+
+<script id="logique">
+// =====================================================================================
+//  LOGIQUE — les règles du jeu, sans affichage.
+//  Rien dans ce bloc ne dessine, ne lit la page (DOM) ni n'écrit dans localStorage :
+//  ce sont des fonctions « pures » (mêmes entrées → mêmes sorties), testées sans navigateur
+//  par tests/test_logique.mjs. Une partie n'est jamais modifiée sur place : chaque action
+//  renvoie une nouvelle partie ({ ...partie, … } = copie avec quelques champs changés).
+// =====================================================================================
+
+const VERSION = "1";
+
+// ----- Ce que l'écran des réglages propose -----
+const TABLES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];   // tables d'addition proposées
+const TERME_MAX = 10;                             // la table du 3 va de 3 + 0 à 3 + 10
+const SOMME_MIN = 2;                              // mode « somme égale à… » : de 2…
+const SOMME_MAX = 20;                             // …à 20
+const CHOIX_NB = [5, 10, 20, 30];                 // nombre d'opérations
+const CHOIX_CHRONO = [60, 120, 180, 300];         // temps maximum, en secondes
+const CHIFFRES_MAX = 2;                           // la plus grande réponse est 20 : deux chiffres
+const REGLAGES_DEFAUT = { mode: "tables", tables: [1], somme: 5, nb: 10, chrono: 120 };
+
+// Réglages relus du navigateur (ou n'importe quoi d'autre) : on garde ce qui est valide,
+// le reste reprend la valeur par défaut.
+function validerReglages(brut) {
+  const r = (brut && typeof brut === "object") ? brut : {};
+  const tables = Array.isArray(r.tables) ? TABLES.filter((t) => r.tables.includes(t)) : [];
+  return {
+    mode: r.mode === "somme" ? "somme" : "tables",
+    tables: tables.length ? tables : REGLAGES_DEFAUT.tables.slice(),
+    somme: (Number.isInteger(r.somme) && r.somme >= SOMME_MIN && r.somme <= SOMME_MAX) ? r.somme : REGLAGES_DEFAUT.somme,
+    nb: CHOIX_NB.includes(r.nb) ? r.nb : REGLAGES_DEFAUT.nb,
+    chrono: CHOIX_CHRONO.includes(r.chrono) ? r.chrono : REGLAGES_DEFAUT.chrono,
+  };
+}
+
+// ----- Les opérations -----
+// Une opération = { a, b } pour « a + b = ? ».
+
+// Toutes les opérations possibles avec ces réglages (la « réserve » dans laquelle on tire).
+function reserveOperations(reglages) {
+  const reserve = [];
+  if (reglages.mode === "somme") {
+    // somme 5 : 0 + 5, 1 + 4, 2 + 3, 3 + 2, 4 + 1, 5 + 0
+    for (let a = 0; a <= reglages.somme; a++) reserve.push({ a: a, b: reglages.somme - a });
+  } else {
+    // table du 3 : 3 + 0, 3 + 1, … 3 + 10
+    for (const table of reglages.tables) {
+      for (let b = 0; b <= TERME_MAX; b++) reserve.push({ a: table, b: b });
+    }
+  }
+  return reserve;
+}
+
+function resultat(operation) { return operation.a + operation.b; }
+function texteOperation(operation) { return operation.a + " + " + operation.b + " ="; }
+function memeOperation(x, y) { return x.a === y.a && x.b === y.b; }
+
+// Copie mélangée d'une liste (méthode de Fisher-Yates). « hasard » renvoie un nombre entre 0 et 1 :
+// Math.random dans le jeu, une fonction fixe dans les tests.
+function melanger(liste, hasard = Math.random) {
+  const copie = liste.slice();
+  for (let i = copie.length - 1; i > 0; i--) {
+    const j = Math.floor(hasard() * (i + 1));
+    [copie[i], copie[j]] = [copie[j], copie[i]];     // échange de deux cases
+  }
+  return copie;
+}
+
+// Tire « nb » opérations : on épuise la réserve mélangée avant de la reprendre (chaque opération
+// revient donc aussi souvent que les autres), sans jamais deux fois de suite la même.
+function tirerSerie(reserve, nb, hasard = Math.random) {
+  const serie = [];
+  while (serie.length < nb) {
+    const paquet = melanger(reserve, hasard);
+    if (serie.length && paquet.length > 1 && memeOperation(paquet[0], serie[serie.length - 1])) {
+      paquet.push(paquet.shift());                   // la première passe à la fin du paquet
+    }
+    serie.push(...paquet);
+  }
+  return serie.slice(0, nb);
+}
+
+// ----- Une partie -----
+// { serie : les opérations, index : numéro de l'opération en cours (à partir de 0),
+//   erreurs : mauvaises réponses validées, saisie : chiffres tapés pas encore validés }
+function nouvellePartie(reglages, hasard = Math.random) {
+  return { serie: tirerSerie(reserveOperations(reglages), reglages.nb, hasard), index: 0, erreurs: 0, saisie: "" };
+}
+
+function partieFinie(partie) { return partie.index >= partie.serie.length; }
+function operationEnCours(partie) { return partieFinie(partie) ? null : partie.serie[partie.index]; }
+
+function taperChiffre(partie, chiffre) {
+  if (partieFinie(partie)) return partie;
+  const saisie = (partie.saisie === "0") ? chiffre : partie.saisie + chiffre;   // « 0 » puis « 7 » donne « 7 », pas « 07 »
+  if (saisie.length > CHIFFRES_MAX) return partie;
+  return { ...partie, saisie: saisie };
+}
+
+function effacerChiffre(partie) {
+  return { ...partie, saisie: partie.saisie.slice(0, -1) };   // slice(0, -1) = tout sauf le dernier caractère
+}
+
+// Touche OK. Renvoie la nouvelle partie et le verdict :
+//  "vide"  rien n'était tapé, rien ne change ;
+//  "juste" on passe à l'opération suivante ;
+//  "faux"  une erreur de plus, la saisie est vidée et on reste sur la même opération.
+function validerSaisie(partie) {
+  if (partieFinie(partie) || partie.saisie === "") return { partie: partie, verdict: "vide" };
+  if (Number(partie.saisie) === resultat(operationEnCours(partie))) {
+    return { partie: { ...partie, index: partie.index + 1, saisie: "" }, verdict: "juste" };
+  }
+  return { partie: { ...partie, erreurs: partie.erreurs + 1, saisie: "" }, verdict: "faux" };
+}
+
+// ----- Le temps -----
+// Temps restant en millisecondes (jamais négatif).
+function tempsRestant(ecouleMs, chronoSecondes) { return Math.max(0, chronoSecondes * 1000 - ecouleMs); }
+
+// Chrono qui décompte : « 1:05 ». On arrondit à la seconde supérieure, pour que 0:00 veuille dire « fini ».
+function formaterChrono(ms) {
+  const secondes = Math.ceil(ms / 1000);
+  return Math.floor(secondes / 60) + ":" + String(secondes % 60).padStart(2, "0");
+}
+
+// Temps final, au dixième de seconde : « 23,4 s » ou « 1 min 05,2 s ».
+function formaterDuree(ms) {
+  const dixiemes = Math.round(ms / 100);
+  const minutes = Math.floor(dixiemes / 600);
+  const secondes = ((dixiemes % 600) / 10).toFixed(1).replace(".", ",");
+  return minutes ? minutes + " min " + secondes.padStart(4, "0") + " s" : secondes + " s";
+}
+
+function libelleChrono(secondes) { return (secondes / 60) + " min"; }
+function pluriel(n, mot) { return n + " " + mot + (n > 1 ? "s" : ""); }
+</script>
+
+<script id="affichage">
+// =====================================================================================
+//  AFFICHAGE — tout ce qui touche la page : réglages, pavé, chrono, localStorage.
+//  N'invente aucune règle : appelle seulement les fonctions du bloc « logique ».
+// =====================================================================================
+
+// Clé du localStorage (mémoire du navigateur). Suffixe -test sur l'adresse …/Calcul-Test/,
+// pour que la version de test ne touche pas aux réglages de la version de référence.
+const CLE_STOCKAGE = "calcul-reglages" + (/-test(\/|$)/i.test(location.pathname) ? "-test" : "");
+
+const $ = (id) => document.getElementById(id);    // raccourci : $("chrono") = l'élément dont l'id est « chrono »
+
+let reglages = lireReglages();
+let partie = null;        // la partie en cours (voir nouvellePartie), ou null
+let debut = 0;            // instant du départ, en millisecondes (performance.now)
+let minuterie = null;     // numéro du setInterval qui rafraîchit le chrono
+
+// ----- Mémoire des réglages -----
+function lireReglages() {
+  try { return validerReglages(JSON.parse(localStorage.getItem(CLE_STOCKAGE))); }
+  catch (e) { return validerReglages(null); }     // navigation privée, texte illisible… : réglages par défaut
+}
+function garderReglages() {
+  try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(reglages)); } catch (e) { /* tant pis */ }
+}
+
+function montrerEcran(nom) {
+  for (const ecran of ["reglages", "jeu", "fin"]) $("ecran-" + ecran).hidden = (ecran !== nom);
+}
+
+// ----- Écran des réglages -----
+// Fabrique une rangée de boutons. « valeurs » : liste de [valeur, texte] ; « estActif(valeur) » dit
+// quels boutons sont allumés ; « auChoix(valeur) » est appelée quand on appuie sur un bouton.
+function rangee(id, valeurs, estActif, auChoix) {
+  const zone = $(id);
+  zone.textContent = "";
+  for (const [valeur, texte] of valeurs) {
+    const bouton = document.createElement("button");
+    bouton.textContent = texte;
+    bouton.classList.toggle("actif", estActif(valeur));
+    bouton.setAttribute("aria-pressed", estActif(valeur));
+    bouton.addEventListener("click", () => { auChoix(valeur); garderReglages(); dessinerReglages(); });
+    zone.appendChild(bouton);
+  }
+}
+
+function dessinerReglages() {
+  rangee("choix-mode", [["tables", "Tables d'addition"], ["somme", "Somme égale à…"]],
+    (v) => reglages.mode === v, (v) => { reglages.mode = v; });
+
+  rangee("choix-tables", TABLES.map((t) => [t, String(t)]),
+    (t) => reglages.tables.includes(t),
+    (t) => {
+      // un appui allume ou éteint la table ; il en reste toujours au moins une
+      const tables = reglages.tables.includes(t) ? reglages.tables.filter((x) => x !== t) : [...reglages.tables, t];
+      if (tables.length) reglages.tables = tables.sort((x, y) => x - y);
+    });
+
+  rangee("choix-nb", CHOIX_NB.map((n) => [n, String(n)]), (n) => reglages.nb === n, (n) => { reglages.nb = n; });
+  rangee("choix-chrono", CHOIX_CHRONO.map((s) => [s, libelleChrono(s)]), (s) => reglages.chrono === s, (s) => { reglages.chrono = s; });
+
+  $("reglage-tables").hidden = reglages.mode !== "tables";
+  $("reglage-somme").hidden = reglages.mode !== "somme";
+  $("somme-valeur").textContent = reglages.somme;
+  $("somme-moins").disabled = reglages.somme <= SOMME_MIN;
+  $("somme-plus").disabled = reglages.somme >= SOMME_MAX;
+
+  const t = reglages.tables[0];
+  $("exemple-tables").textContent = "Table du " + t + " : " + t + " + 0, " + t + " + 1 … jusqu'à " + t + " + " + TERME_MAX + ".";
+  const s = reglages.somme, a = Math.floor(s / 2);
+  $("exemple-somme").textContent = "Toutes les additions qui font " + s + " : " + a + " + " + (s - a) + " = ?";
+}
+
+function changerSomme(pas) {
+  reglages = validerReglages({ ...reglages, somme: Math.min(SOMME_MAX, Math.max(SOMME_MIN, reglages.somme + pas)) });
+  garderReglages();
+  dessinerReglages();
+}
+
+// ----- Partie -----
+function demarrer() {
+  partie = nouvellePartie(reglages);
+  debut = performance.now();
+  montrerEcran("jeu");
+  dessinerJeu();
+  rafraichirChrono();
+  clearInterval(minuterie);
+  minuterie = setInterval(rafraichirChrono, 100);   // dix fois par seconde
+}
+
+function dessinerJeu() {
+  const operation = operationEnCours(partie);
+  if (!operation) return;
+  $("avancement").textContent = (partie.index + 1) + " / " + partie.serie.length;
+  $("enonce").textContent = texteOperation(operation);
+  $("reponse").textContent = partie.saisie || "?";
+  $("reponse").classList.toggle("vide", partie.saisie === "");
+}
+
+function rafraichirChrono() {
+  if (!partie) return;
+  const restant = tempsRestant(performance.now() - debut, reglages.chrono);
+  $("chrono").textContent = formaterChrono(restant);
+  $("chrono").classList.toggle("urgent", restant <= 10000);   // rouge dans les 10 dernières secondes
+  if (restant <= 0) terminer(false);
+}
+
+// Une touche du pavé (ou du clavier du Mac) : "0" à "9", "effacer" ou "ok".
+function touche(nom) {
+  if (!partie || $("ecran-jeu").hidden) return;
+  const reponse = $("reponse");
+  reponse.classList.remove("faux");
+  if (nom === "effacer") {
+    partie = effacerChiffre(partie);
+  } else if (nom === "ok") {
+    const { partie: suite, verdict } = validerSaisie(partie);
+    partie = suite;
+    if (verdict === "faux") {
+      void reponse.offsetWidth;            // force le navigateur à « voir » le retrait de la classe, pour rejouer la secousse
+      reponse.classList.add("faux");
+    }
+    if (verdict === "juste" && partieFinie(partie)) { terminer(true); return; }
+  } else {
+    partie = taperChiffre(partie, nom);
+  }
+  dessinerJeu();
+}
+
+// Fin de partie. reussi = true : toutes les opérations sont faites ; false : le temps est écoulé.
+function terminer(reussi) {
+  clearInterval(minuterie);
+  const duree = Math.min(performance.now() - debut, reglages.chrono * 1000);
+  const total = partie.serie.length, faites = partie.index, erreurs = partie.erreurs;
+  partie = null;
+  $("fin-titre").textContent = reussi ? "Bravo !" : "Temps écoulé";
+  $("fin-temps").textContent = reussi ? formaterDuree(duree) : faites + " / " + total;
+  $("fin-detail").textContent = (reussi
+    ? pluriel(total, "opération")
+    : pluriel(faites, "opération") + " sur " + total + " en " + libelleChrono(reglages.chrono))
+    + ", " + (erreurs ? pluriel(erreurs, "erreur") : "aucune erreur");
+  montrerEcran("fin");
+}
+
+function arreter() {
+  clearInterval(minuterie);
+  partie = null;
+  montrerEcran("reglages");
+}
+
+// ----- Mise en place -----
+function construirePave() {
+  const touches = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "effacer", "0", "ok"];
+  for (const nom of touches) {
+    const bouton = document.createElement("button");
+    bouton.dataset.touche = nom;           // devient l'attribut data-touche="…" du bouton
+    bouton.textContent = nom === "effacer" ? "⌫" : nom === "ok" ? "OK" : nom;
+    if (nom === "effacer") { bouton.className = "effacer"; bouton.setAttribute("aria-label", "Effacer"); }
+    if (nom === "ok") bouton.className = "ok";
+    $("pave").appendChild(bouton);
+  }
+  // « pointerdown » = dès que le doigt touche (plus réactif que « click », qui attend que le doigt se lève)
+  $("pave").addEventListener("pointerdown", (evenement) => {
+    const bouton = evenement.target.closest("button");
+    if (!bouton) return;
+    evenement.preventDefault();
+    touche(bouton.dataset.touche);
+  });
+}
+
+// Clavier du Mac (pratique pour essayer) : chiffres, Retour arrière, Entrée.
+document.addEventListener("keydown", (evenement) => {
+  if (/^[0-9]$/.test(evenement.key)) touche(evenement.key);
+  else if (evenement.key === "Backspace") touche("effacer");
+  else if (evenement.key === "Enter" && !$("ecran-jeu").hidden) { evenement.preventDefault(); touche("ok"); }
+});
+
+$("somme-moins").addEventListener("click", () => changerSomme(-1));
+$("somme-plus").addEventListener("click", () => changerSomme(+1));
+$("btn-partir").addEventListener("click", demarrer);
+$("btn-rejouer").addEventListener("click", demarrer);
+$("btn-reglages").addEventListener("click", () => montrerEcran("reglages"));
+$("btn-arreter").addEventListener("click", arreter);
+$("version").textContent = "V" + VERSION + " (essai)";
+
+construirePave();
+dessinerReglages();
+</script>
+</body>
+</html>
