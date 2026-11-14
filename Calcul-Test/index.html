@@ -95,12 +95,34 @@ h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gris); font-weight: 600; 
 }
 .reponse.vide { color: var(--bord); }
 .reponse.faux { border-color: var(--rouge); color: var(--rouge); animation: secousse .35s; }
-.reponse.juste { border-color: var(--vert); }
+.reponse.juste { animation: eclair .35s; }
 @keyframes secousse {
   20% { transform: translateX(-10px); } 40% { transform: translateX(10px); }
   60% { transform: translateX(-6px); }  80% { transform: translateX(6px); }
 }
-@media (prefers-reduced-motion: reduce) { .reponse.faux { animation: none; } }
+@keyframes eclair { 0%, 60% { border-color: var(--vert); background: #e3f4ea; } }
+@media (prefers-reduced-motion: reduce) { .reponse.faux, .reponse.juste { animation: none; } }
+
+/* Le « +1 » ou « −1 » qui s'envole au-dessus de la case réponse */
+.operation { position: relative; }
+.envol {
+  position: absolute; right: .35em; top: -1.2em;
+  font-size: .5em; font-weight: 700; pointer-events: none;
+  animation: envol .8s ease-out forwards;
+}
+.envol.plus { color: var(--vert); }
+.envol.moins { color: var(--rouge); }
+@keyframes envol { from { opacity: 1; transform: translateY(.5em); } to { opacity: 0; transform: translateY(-.9em); } }
+
+/* Le compteur de points, qui « saute » quand il change */
+#points { font-size: 1.5rem; font-weight: 700; color: var(--bleu); font-variant-numeric: tabular-nums; display: inline-block; }
+#points.saut { animation: saut .3s; }
+@keyframes saut { 50% { transform: scale(1.35); } }
+
+/* Confettis de l'écran de fin */
+#confettis { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+#confettis span { position: absolute; top: -24px; width: 10px; height: 16px; border-radius: 2px; animation: chute linear forwards; }
+@keyframes chute { to { transform: translateY(110vh) rotate(720deg); } }
 
 .pave { width: 100%; max-width: 440px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .pave button { min-height: clamp(60px, 10.5dvh, 104px); font-size: 2.2rem; font-weight: 600; }
@@ -118,7 +140,8 @@ h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gris); font-weight: 600; 
 /* ----- Écran de fin ----- */
 .fin { margin: auto; width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 16px; text-align: center; }
 #fin-temps { font-size: 3.2rem; font-weight: 700; color: var(--bleu); font-variant-numeric: tabular-nums; }
-#fin-detail { font-size: 1.3rem; color: var(--gris); }
+#fin-points { font-size: 2.2rem; font-weight: 700; color: var(--vert); }
+#fin-detail { font-size: 1.2rem; color: var(--gris); }
 .fin button { min-height: 60px; font-size: 1.4rem; }
 </style>
 </head>
@@ -156,6 +179,11 @@ h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gris); font-weight: 600; 
       <div class="choix" id="choix-chrono"></div>
     </div>
 
+    <div>
+      <h2>Son</h2>
+      <div class="choix" id="choix-son"></div>
+    </div>
+
     <button class="principal" id="btn-partir">C'est parti !</button>
     <p class="version" id="version"></p>
   </div>
@@ -166,6 +194,7 @@ h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gris); font-weight: 600; 
   <div class="barre">
     <button id="btn-arreter">✕ Arrêter</button>
     <span id="avancement"></span>
+    <span id="points" aria-label="Points"></span>
     <span id="chrono"></span>
   </div>
   <div class="plateau">
@@ -179,11 +208,14 @@ h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gris); font-weight: 600; 
   <div class="fin">
     <h1 id="fin-titre"></h1>
     <div id="fin-temps"></div>
+    <div id="fin-points"></div>
     <div id="fin-detail"></div>
     <button class="principal" id="btn-rejouer">Rejouer</button>
     <button id="btn-reglages">Changer les réglages</button>
   </div>
 </section>
+
+<div id="confettis"></div>
 
 <script id="logique">
 // =====================================================================================
@@ -204,7 +236,12 @@ const SOMME_MAX = 20;                             // …à 20 (reglages.somme = 
 const CHOIX_NB = [5, 10, 20, 30];                 // nombre d'opérations
 const CHOIX_CHRONO = [60, 120, 180, 300];         // temps maximum, en secondes
 const CHIFFRES_MAX = 2;                           // la plus grande réponse est 20 : deux chiffres
-const REGLAGES_DEFAUT = { mode: "tables", tables: [1], somme: 5, nb: 10, chrono: 120 };
+const REGLAGES_DEFAUT = { mode: "tables", tables: [1], somme: 5, nb: 10, chrono: 120, bruitages: true, musique: true };
+
+// ----- Les points -----
+const POINTS_JUSTE = 1;                           // une bonne réponse
+const POINTS_FAUX = -1;                           // une mauvaise réponse validée
+const BONUS_TEMPS = 3;                            // toutes les opérations faites avant la fin du chrono
 
 // Réglages relus du navigateur (ou n'importe quoi d'autre) : on garde ce qui est valide,
 // le reste reprend la valeur par défaut.
@@ -217,6 +254,8 @@ function validerReglages(brut) {
     somme: (Number.isInteger(r.somme) && r.somme >= SOMME_MIN && r.somme <= SOMME_MAX) ? r.somme : REGLAGES_DEFAUT.somme,
     nb: CHOIX_NB.includes(r.nb) ? r.nb : REGLAGES_DEFAUT.nb,
     chrono: CHOIX_CHRONO.includes(r.chrono) ? r.chrono : REGLAGES_DEFAUT.chrono,
+    bruitages: r.bruitages !== false,             // allumés, sauf si on les a éteints
+    musique: r.musique !== false,
   };
 }
 
@@ -303,6 +342,16 @@ function validerSaisie(partie) {
   return { partie: { ...partie, erreurs: partie.erreurs + 1, saisie: "" }, verdict: "faux" };
 }
 
+// Points pendant la partie : +1 par bonne réponse, −1 par erreur (le total peut passer sous zéro).
+function pointsEnCours(partie) { return partie.index * POINTS_JUSTE + partie.erreurs * POINTS_FAUX; }
+
+// Points à la fin : le bonus s'ajoute si toutes les opérations ont été faites dans le temps.
+function pointsFinaux(partie, dansLesTemps) { return pointsEnCours(partie) + (dansLesTemps ? BONUS_TEMPS : 0); }
+
+// « +1 », « −3 », « 0 » (avec le vrai signe moins, plus lisible que le tiret).
+function texteSigne(n) { return n > 0 ? "+" + n : n < 0 ? "−" + (-n) : "0"; }
+function textePoints(n) { return (n < 0 ? "−" + (-n) : String(n)) + " point" + (Math.abs(n) > 1 ? "s" : ""); }
+
 // ----- Le temps -----
 // Temps restant en millisecondes (jamais négatif).
 function tempsRestant(ecouleMs, chronoSecondes) { return Math.max(0, chronoSecondes * 1000 - ecouleMs); }
@@ -385,6 +434,9 @@ function dessinerReglages() {
 
   rangee("choix-nb", CHOIX_NB.map((n) => [n, String(n)]), (n) => reglages.nb === n, (n) => { reglages.nb = n; });
   rangee("choix-chrono", CHOIX_CHRONO.map((s) => [s, libelleChrono(s)]), (s) => reglages.chrono === s, (s) => { reglages.chrono = s; });
+  // deux interrupteurs : un appui allume ou éteint
+  rangee("choix-son", [["bruitages", "Bruitages"], ["musique", "Musique"]],
+    (nom) => reglages[nom], (nom) => { reglages[nom] = !reglages[nom]; });
 
   $("reglage-tables").hidden = reglages.mode !== "tables";
   $("reglage-somme").hidden = reglages.mode !== "somme";
@@ -405,8 +457,134 @@ function changerSomme(pas) {
   dessinerReglages();
 }
 
+// ----- Sons -----
+// Aucun fichier audio : les sons sont fabriqués par le navigateur (Web Audio). Une « note » est un
+// oscillateur (une onde à une fréquence donnée) dont le volume monte très vite puis s'éteint.
+let audio = null;         // l'AudioContext (la « table de mixage » du navigateur), créé au premier départ
+let musique = null;       // la musique en cours : { sortie, pas, quand, minuterie }, ou null
+
+// À appeler pendant un appui sur un bouton : Safari n'autorise le son qu'après un geste de l'utilisateur.
+function preparerAudio() {
+  if (!reglages.bruitages && !reglages.musique) return;
+  try {
+    const Classe = window.AudioContext || window.webkitAudioContext;   // ancien nom sur les vieux Safari
+    if (!audio) audio = new Classe();
+    if (audio.state !== "running") audio.resume();
+  } catch (e) { audio = null; }                   // pas de son possible : le jeu continue en silence
+}
+
+// Numéro de note MIDI → fréquence en hertz (69 = le la à 440 Hz, +12 = une octave plus haut).
+function frequence(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+// Joue une note. quand : instant de départ (horloge de l'AudioContext, en secondes) ; forme : timbre
+// de l'onde ("sine" doux, "triangle" un peu plus clair, "square" plus rêche).
+function note(midi, quand, duree, volume, forme, sortie) {
+  const oscillateur = audio.createOscillator(), gain = audio.createGain();
+  oscillateur.type = forme;
+  oscillateur.frequency.value = frequence(midi);
+  gain.gain.setValueAtTime(0.0001, quand);
+  gain.gain.exponentialRampToValueAtTime(volume, quand + 0.015);     // attaque rapide, sans « clic »
+  gain.gain.exponentialRampToValueAtTime(0.0001, quand + duree);     // puis la note s'éteint
+  oscillateur.connect(gain).connect(sortie);
+  oscillateur.start(quand);
+  oscillateur.stop(quand + duree + 0.02);
+}
+
+// Les bruitages : pour chacun, une liste de notes [note MIDI, départ (s), durée (s)].
+const BRUITAGES = {
+  juste: { forme: "triangle", volume: 0.22, notes: [[76, 0, 0.12], [83, 0.09, 0.22]] },                 // deux notes qui montent
+  faux:  { forme: "square",   volume: 0.06, notes: [[55, 0, 0.14], [50, 0.13, 0.26]] },                 // deux notes graves qui descendent
+  bravo: { forme: "triangle", volume: 0.2,  notes: [[72, 0, 0.14], [76, 0.12, 0.14], [79, 0.24, 0.14], [84, 0.36, 0.6], [76, 0.36, 0.6], [79, 0.36, 0.6]] },   // arpège puis accord
+  temps: { forme: "sine",     volume: 0.2,  notes: [[67, 0, 0.22], [64, 0.2, 0.22], [60, 0.4, 0.5]] },  // trois notes qui descendent doucement
+};
+
+function bruitage(nom) {
+  if (!audio || !reglages.bruitages) return;
+  const b = BRUITAGES[nom], depart = audio.currentTime + 0.01;
+  for (const [midi, decalage, duree] of b.notes) note(midi, depart + decalage, duree, b.volume, b.forme, audio.destination);
+}
+
+// La musique de fond : une boucle de 4 mesures. Un « pas » = une croche (un demi-temps).
+const TEMPO = 112;                                 // temps par minute
+const MELODIE = [                                  // une note MIDI par pas, null = silence
+  72, null, 76, 79, null, 76, 81, 79,
+  76, null, 74, 76, 79, null, null, null,
+  81, null, 79, 76, null, 74, 76, 72,
+  74, null, 76, 74, 72, null, null, null,
+];
+const BASSE = [48, 55, 48, 55, 57, 52, 57, 52, 53, 48, 53, 48, 55, 50, 55, 59];   // une note par temps (tous les deux pas)
+
+function lancerMusique() {
+  arreterMusique();
+  if (!audio || !reglages.musique) return;
+  const sortie = audio.createGain();               // un bouton de volume pour toute la musique
+  sortie.gain.value = 1;
+  sortie.connect(audio.destination);
+  musique = { sortie: sortie, pas: 0, quand: audio.currentTime + 0.15, minuterie: setInterval(programmerMusique, 50) };
+  programmerMusique();
+}
+
+// Appelée 20 fois par seconde : programme à l'avance les notes du prochain tiers de seconde.
+// (C'est l'horloge de l'AudioContext qui donne le rythme, bien plus régulière que setInterval.)
+function programmerMusique() {
+  if (!musique) return;
+  const dureePas = 60 / TEMPO / 2;
+  if (musique.quand < audio.currentTime) musique.quand = audio.currentTime + 0.05;   // après une pause (iPad verrouillé…)
+  while (musique.quand < audio.currentTime + 0.35) {
+    const i = musique.pas % MELODIE.length;
+    if (MELODIE[i] !== null) note(MELODIE[i], musique.quand, dureePas * 1.7, 0.05, "triangle", musique.sortie);
+    if (i % 2 === 0) note(BASSE[i / 2], musique.quand, dureePas * 1.9, 0.045, "sine", musique.sortie);
+    musique.pas += 1;
+    musique.quand += dureePas;
+  }
+}
+
+function arreterMusique() {
+  if (!musique) return;
+  clearInterval(musique.minuterie);
+  musique.sortie.gain.setTargetAtTime(0, audio.currentTime, 0.04);   // fondu très court, pour ne pas couper net
+  musique = null;
+}
+
+// ----- Animations -----
+const SANS_ANIMATION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;   // réglage « réduire les animations »
+
+// Le « +1 » ou « −1 » qui s'envole au-dessus de la case réponse.
+function envol(points) {
+  if (SANS_ANIMATION) return;
+  const etiquette = document.createElement("span");
+  etiquette.className = "envol " + (points > 0 ? "plus" : "moins");
+  etiquette.textContent = texteSigne(points);
+  document.querySelector(".operation").appendChild(etiquette);
+  setTimeout(() => etiquette.remove(), 800);
+}
+
+// Rejoue une animation CSS : on retire la classe, on force le navigateur à en tenir compte, on la remet.
+function animer(element, classe) {
+  element.classList.remove(classe);
+  void element.offsetWidth;
+  element.classList.add(classe);
+}
+
+function confettis() {
+  const zone = $("confettis");
+  zone.textContent = "";
+  if (SANS_ANIMATION) return;
+  for (let i = 0; i < 60; i++) {
+    const confetti = document.createElement("span");
+    confetti.style.left = (Math.random() * 100) + "%";
+    confetti.style.background = "hsl(" + Math.floor(Math.random() * 360) + " 75% 55%)";   // couleur au hasard
+    confetti.style.animationDuration = (1.6 + Math.random() * 1.6) + "s";
+    confetti.style.animationDelay = (Math.random() * 0.6) + "s";
+    zone.appendChild(confetti);
+  }
+  setTimeout(() => { zone.textContent = ""; }, 4000);
+}
+
 // ----- Partie -----
 function demarrer() {
+  preparerAudio();
+  $("confettis").textContent = "";
   partie = nouvellePartie(reglages);
   debut = performance.now();
   montrerEcran("jeu");
@@ -414,11 +592,13 @@ function demarrer() {
   rafraichirChrono();
   clearInterval(minuterie);
   minuterie = setInterval(rafraichirChrono, 100);   // dix fois par seconde
+  lancerMusique();
 }
 
 function dessinerJeu() {
   const operation = operationEnCours(partie);
   if (!operation) return;
+  $("points").textContent = "⭐ " + textePoints(pointsEnCours(partie));
   $("avancement").textContent = (partie.index + 1) + " / " + partie.serie.length;
   $("enonce").textContent = texteOperation(operation);
   $("reponse").textContent = partie.saisie || "?";
@@ -437,17 +617,15 @@ function rafraichirChrono() {
 function touche(nom) {
   if (!partie || $("ecran-jeu").hidden) return;
   const reponse = $("reponse");
-  reponse.classList.remove("faux");
+  reponse.classList.remove("faux", "juste");
   if (nom === "effacer") {
     partie = effacerChiffre(partie);
   } else if (nom === "ok") {
     const { partie: suite, verdict } = validerSaisie(partie);
     partie = suite;
-    if (verdict === "faux") {
-      void reponse.offsetWidth;            // force le navigateur à « voir » le retrait de la classe, pour rejouer la secousse
-      reponse.classList.add("faux");
-    }
     if (verdict === "juste" && partieFinie(partie)) { terminer(true); return; }
+    if (verdict === "juste") { bruitage("juste"); envol(POINTS_JUSTE); animer(reponse, "juste"); animer($("points"), "saut"); }
+    if (verdict === "faux") { bruitage("faux"); envol(POINTS_FAUX); animer(reponse, "faux"); animer($("points"), "saut"); }
   } else {
     partie = taperChiffre(partie, nom);
   }
@@ -459,18 +637,26 @@ function terminer(reussi) {
   clearInterval(minuterie);
   const duree = Math.min(performance.now() - debut, reglages.chrono * 1000);
   const total = partie.serie.length, faites = partie.index, erreurs = partie.erreurs;
+  const points = pointsFinaux(partie, reussi);
   partie = null;
+  arreterMusique();
+  bruitage(reussi ? "bravo" : "temps");
+  if (reussi) confettis();
   $("fin-titre").textContent = reussi ? "Bravo !" : "Temps écoulé";
   $("fin-temps").textContent = reussi ? formaterDuree(duree) : faites + " / " + total;
-  $("fin-detail").textContent = (reussi
-    ? pluriel(total, "opération")
-    : pluriel(faites, "opération") + " sur " + total + " en " + libelleChrono(reglages.chrono))
-    + ", " + (erreurs ? pluriel(erreurs, "erreur") : "aucune erreur");
+  $("fin-points").textContent = "⭐ " + textePoints(points);
+  // le détail du calcul des points : « 10 bonnes réponses (+10) · 1 erreur (−1) · dans les temps (+3) »
+  $("fin-detail").textContent = [
+    pluriel(faites, "bonne") + " " + (faites > 1 ? "réponses" : "réponse") + " (" + texteSigne(faites * POINTS_JUSTE) + ")",
+    erreurs ? pluriel(erreurs, "erreur") + " (" + texteSigne(erreurs * POINTS_FAUX) + ")" : "aucune erreur",
+    reussi ? "dans les temps (" + texteSigne(BONUS_TEMPS) + ")" : "pas fini en " + libelleChrono(reglages.chrono),
+  ].join(" · ");
   montrerEcran("fin");
 }
 
 function arreter() {
   clearInterval(minuterie);
+  arreterMusique();
   partie = null;
   montrerEcran("reglages");
 }
