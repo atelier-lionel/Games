@@ -199,8 +199,8 @@ const VERSION = "1";
 // ----- Ce que l'écran des réglages propose -----
 const TABLES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];   // tables d'addition proposées
 const TERME_MAX = 10;                             // la table du 3 va de 3 + 0 à 3 + 10
-const SOMME_MIN = 2;                              // mode « somme égale à… » : de 2…
-const SOMME_MAX = 20;                             // …à 20
+const SOMME_MIN = 2;                              // mode « somme jusqu'à… » : le plafond va de 2…
+const SOMME_MAX = 20;                             // …à 20 (reglages.somme = ce plafond)
 const CHOIX_NB = [5, 10, 20, 30];                 // nombre d'opérations
 const CHOIX_CHRONO = [60, 120, 180, 300];         // temps maximum, en secondes
 const CHIFFRES_MAX = 2;                           // la plus grande réponse est 20 : deux chiffres
@@ -227,8 +227,11 @@ function validerReglages(brut) {
 function reserveOperations(reglages) {
   const reserve = [];
   if (reglages.mode === "somme") {
-    // somme 5 : 0 + 5, 1 + 4, 2 + 3, 3 + 2, 4 + 1, 5 + 0
-    for (let a = 0; a <= reglages.somme; a++) reserve.push({ a: a, b: reglages.somme - a });
+    // somme jusqu'à 5 : toutes les additions dont le résultat va de 1 à 5
+    // (0 + 1, 1 + 0, 0 + 2, 1 + 1, 2 + 0, … 4 + 1, 5 + 0)
+    for (let total = 1; total <= reglages.somme; total++) {
+      for (let a = 0; a <= total; a++) reserve.push({ a: a, b: total - a });
+    }
   } else {
     // table du 3 : 3 + 0, 3 + 1, … 3 + 10
     for (const table of reglages.tables) {
@@ -369,7 +372,7 @@ function rangee(id, valeurs, estActif, auChoix) {
 }
 
 function dessinerReglages() {
-  rangee("choix-mode", [["tables", "Tables d'addition"], ["somme", "Somme égale à…"]],
+  rangee("choix-mode", [["tables", "Tables d'addition"], ["somme", "Somme jusqu'à…"]],
     (v) => reglages.mode === v, (v) => { reglages.mode = v; });
 
   rangee("choix-tables", TABLES.map((t) => [t, String(t)]),
@@ -392,7 +395,8 @@ function dessinerReglages() {
   const t = reglages.tables[0];
   $("exemple-tables").textContent = "Table du " + t + " : " + t + " + 0, " + t + " + 1 … jusqu'à " + t + " + " + TERME_MAX + ".";
   const s = reglages.somme, a = Math.floor(s / 2);
-  $("exemple-somme").textContent = "Toutes les additions qui font " + s + " : " + a + " + " + (s - a) + " = ?";
+  $("exemple-somme").textContent = "Toutes les additions dont le résultat va de 1 à " + s
+    + " : 1 + 1, " + a + " + " + (s - a) + ", 0 + " + (s - 1) + "…";
 }
 
 function changerSomme(pas) {
