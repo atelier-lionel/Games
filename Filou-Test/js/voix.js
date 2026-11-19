@@ -1,8 +1,13 @@
-/* Filou lit — sons : voix du Mac, enregistrements, effets sonores, écoute (V2) */
+/* Filou lit — sons : voix du Mac, enregistrements, effets sonores, écoute (V2, corrections du 19/11/2026 : deux vitesses) */
 "use strict";
 
 var VOIX = (function () {
-  let reglages = { voix: "", voixFilou: "", vitesse: 0.85, hauteur: 1.15, sons: true };
+  let reglages = { voix: "", voixFilou: "", vitesse: 0.85, vitesseMots: 0.7, hauteur: 1.15, sons: true };
+  /* Deux vitesses : « vitesse » pour Filou et les phrases, « vitesseMots » (≈ 20 % plus lent) pour ce que
+     l'enfant doit reconnaître ou écrire (syllabes, sons, dictée). Chaque nouvel appui sur 🔊 dans un même
+     exercice (rep = 1, 2…) ralentit encore de 10 %, sans descendre sous PLANCHER. */
+  const RALENTI = 0.9, PLANCHER = 0.5;
+  function debitMots(rep = 0) { return Math.max(PLANCHER, reglages.vitesseMots * Math.pow(RALENTI, rep)); }
   let voixFr = [];
   const synth = window.speechSynthesis || null;
   const Reco = window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -38,7 +43,8 @@ var VOIX = (function () {
   }
 
   /* Parle ; se résout à la fin (avec garde-fou si Safari oublie l'événement de fin) */
-  function parler(texte, { filou = false, lent = false } = {}) {
+  /* mot : true → vitesse des mots à reconnaître ; rep : nombre de réécoutes demandées dans l'exercice */
+  function parler(texte, { filou = false, mot = false, rep = 0 } = {}) {
     return new Promise(res => {
       if (!synth || !texte) { res(); return; }
       synth.cancel();
@@ -48,7 +54,7 @@ var VOIX = (function () {
       if (v) u.voice = v;
       u.lang = v ? v.lang : "fr-FR";
       const vari = filou ? (Math.random() * 0.16 - 0.08) : 0;
-      u.rate = filou ? Math.min(1.05, reglages.vitesse + 0.1) : reglages.vitesse * (lent ? 0.85 : 1);
+      u.rate = filou ? Math.min(1.05, reglages.vitesse + 0.1) : mot ? debitMots(rep) : reglages.vitesse;
       u.pitch = filou ? reglages.hauteur + vari : 1;
       let fini = false;
       const fin = () => { if (fini) return; fini = true; clearTimeout(garde); if (filou) surParle(false); res(); };
@@ -89,10 +95,10 @@ var VOIX = (function () {
   function lettre(g) { return jouerFichier("sons/lettres/" + g + ".m4a"); }
 
   /* Syllabe isolée : sons/syllabes/<syllabe>.m4a si présent, sinon la voix du Mac avec une
-     orthographe sûre (prononce : table syllabe → mot homophone, ex. vo → veau) */
-  async function syllabe(s, prononce = {}) {
+     orthographe sûre (prononce : table PRONONCE, ex. vo → veau, za → zà), à la vitesse des mots */
+  async function syllabe(s, prononce = {}, rep = 0) {
     if (await jouerFichier("sons/syllabes/" + s + ".m4a")) return;
-    return parler(prononce[s] || s);
+    return parler(prononce[s] || s, { mot: true, rep });
   }
 
   /* ---------- Effets sonores (synthétisés, aucun fichier) ---------- */
@@ -211,6 +217,6 @@ var VOIX = (function () {
     get voixFr() { return voixFr; }, chargerVoix, recoDispo: !!Reco,
     regler(r) { reglages = Object.assign(reglages, r); },
     surParle(f) { surParle = f; },
-    parler, filou, lettre, syllabe, jouerFichier, son, miaou, stop, ecouter, arreterEcoute, contexte, deverrouiller,
+    parler, debitMots, filou, lettre, syllabe, jouerFichier, son, miaou, stop, ecouter, arreterEcoute, contexte, deverrouiller,
   };
 })();

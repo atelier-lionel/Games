@@ -145,6 +145,14 @@ var FILOU_MOTEUR = (function () {
 
   /* Une « attaque » de syllabe : une consonne (« v ») ou un groupe (« vr ») */
   const attaquesConnues = L => [...consonnesConnues(L), ...groupesConnus(L)];
+  /* Toutes les syllabes que le jeu peut dire seules (Trouve la syllabe, Fabrique, défi) : consonne + voyelle,
+     et toute consonne d'un groupe + r ou l + voyelle (la fabrique à 3 cases permet aussi « tla », « dla »).
+     Chacune doit avoir sa prononciation dans PRONONCE (vérifié par tests/test_moteur.js). */
+  function toutesSyllabes() {
+    const premieres = [...new Set(GROUPES.map(g => g[0]))];
+    const attaques = [...CONSONNES, ...premieres.flatMap(c => ["r", "l"].map(x => c + x))];
+    return attaques.flatMap(u => VOYELLES_SYLLABE.map(v => u + v));
+  }
   function syllabesDe(u, L) { return VOYELLES_SYLLABE.filter(v => NIVEAU_LETTRE[v] <= L).map(v => u + v); }
   function choisirAttaque(L, focus, proba = 0.8) {
     const toutes = attaquesConnues(L); if (!toutes.length) return null;
@@ -431,7 +439,7 @@ var FILOU_MOTEUR = (function () {
     NIVEAUX: N, idx, niveauMot, niveauTexte, motsDe, sansMuettes, brut, contient, lettresConnues,
     voyellesConnues, consonnesConnues, groupesConnus, MOTS, MOTS_VOIX, PHRASES, TROUS, DICTEE, genererNiveau,
     genererDefi, graine, melange, pioche, cle, distance, jugerLecture, progressionLecture, etoiles, NOM_VOYELLE,
-    VOYELLES, CONSONNES, GROUPES, PAIRES, positionPaire,
+    VOYELLES, VOYELLES_SYLLABE, CONSONNES, GROUPES, PAIRES, positionPaire, toutesSyllabes,
   };
 })();
 

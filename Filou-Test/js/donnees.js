@@ -58,10 +58,47 @@ var FILOU_DATA = (function () {
       aide: { f: "souffle", v: "vibre" }, exemples: { f: "fusée", v: "vélo" } },
   ];
 
-  /* Prononciation des syllabes isolées par la voix du Mac : un mot qui se prononce pareil évite
-     une lecture en sigle (« vo » → « V.O. »). Un enregistrement sons/syllabes/<syllabe>.m4a passe avant. */
-  const PRONONCE = { lo: "lot", ro: "rot", mo: "mot", no: "nos", so: "seau", fo: "faux", vo: "veau",
-    po: "pot", bo: "beau", to: "tôt", do: "dos" };
+  /* Prononciation des syllabes dites seules par la voix du Mac (Trouve la syllabe, Fabrique, défi).
+     Dite seule, une syllabe peut être lue comme un sigle (« za » → « zone d'activité », « vo » → « V.O. »).
+     Règle : un mot qui se prononce pareil quand il existe (sa → ça, pi → pie) ; sinon la voyelle prend
+     un accent (à, î, ô, û), orthographe qui ne ressemble à aucun sigle (za → zà). Les syllabes en é
+     sont gardées telles quelles (l'accent suffit) ou remplacées par un homophone (fé → fée).
+     À valider à l'oreille : espace parent › « Écouter toutes les syllabes ».
+     Un enregistrement sons/syllabes/<syllabe>.m4a passe avant. Toute syllabe de toutesSyllabes()
+     (moteur.js) doit figurer ici : tests/test_moteur.js le vérifie. */
+  const PRONONCE = {
+    // consonne + a, i, o, u, é
+    sa: "ça", si: "si", so: "seau", su: "su", sé: "sé",
+    la: "là", li: "lit", lo: "lot", lu: "lu", lé: "lé",
+    ra: "rat", ri: "riz", ro: "rot", ru: "rue", ré: "ré",
+    na: "nà", ni: "ni", no: "nos", nu: "nu", né: "né",
+    ma: "ma", mi: "mie", mo: "mot", mu: "mû", mé: "mé",
+    fa: "fa", fi: "fî", fo: "faux", fu: "fut", fé: "fée",
+    va: "va", vi: "vit", vo: "veau", vu: "vu", vé: "vé",
+    pa: "pas", pi: "pie", po: "pot", pu: "pu", pé: "pé",
+    ba: "bas", bi: "bî", bo: "beau", bu: "bu", bé: "bé",
+    ta: "tas", ti: "tî", to: "tôt", tu: "tu", té: "thé",
+    da: "dà", di: "dit", do: "dos", du: "du", dé: "dé",
+    za: "zà", zi: "zî", zo: "zoo", zu: "zû", zé: "zé",
+    // consonne + r + a, i, o, u, é
+    pra: "prà", pri: "prix", pro: "prô", pru: "prû", pré: "pré",
+    bra: "bras", bri: "bris", bro: "brô", bru: "bru", bré: "bré",
+    tra: "trà", tri: "tri", tro: "trop", tru: "trû", tré: "tré",
+    dra: "drap", dri: "drî", dro: "drô", dru: "dru", dré: "dré",
+    cra: "crà", cri: "cri", cro: "croc", cru: "cru", cré: "crée",
+    gra: "gras", gri: "gris", gro: "gros", gru: "grue", gré: "gré",
+    fra: "frà", fri: "frit", fro: "frô", fru: "frû", fré: "fré",
+    vra: "vrà", vri: "vrî", vro: "vrô", vru: "vrû", vré: "vré",
+    // consonne + l + a, i, o, u, é (tl et dl : seulement fabriqués par erreur dans la fabrique)
+    pla: "plat", pli: "pli", plo: "plot", plu: "plu", plé: "plé",
+    bla: "blà", bli: "blî", blo: "blô", blu: "blû", blé: "blé",
+    tla: "tlà", tli: "tlî", tlo: "tlô", tlu: "tlû", tlé: "tlé",
+    dla: "dlà", dli: "dlî", dlo: "dlô", dlu: "dlû", dlé: "dlé",
+    cla: "clà", cli: "clî", clo: "clos", clu: "clû", clé: "clé",
+    gla: "glà", gli: "glî", glo: "glô", glu: "glu", glé: "glé",
+    fla: "flà", fli: "flî", flo: "flot", flu: "flû", flé: "flé",
+    vla: "vlà", vli: "vlî", vlo: "vlô", vlu: "vlû", vlé: "vlé",
+  };
 
   /* Phrase du son, dite à l'ouverture d'un niveau consonne (le Mac ne sait pas dire « fff ») */
   const INDICES = {
@@ -304,20 +341,34 @@ var FILOU_DATA = (function () {
   ];
 
   /* ---------- Phrases de Filou (remplaçables par sons/filou/<clé>.m4a ; variantes : <clé>1, <clé>2…) ---------- */
+  /* Phrases de Filou. « {p} » : place possible du prénom (saisi dans l'espace parent, gardé dans le navigateur).
+     Encouragements (bravo, bravoEssai, bravoSerie, finNiveau) : prénom environ une fois sur quatre, jamais deux
+     fois de suite, et aucune formule répétée avant que 5 autres aient été dites (app.js, direCle). */
   const FILOU = {
-    bonjour: ["Coucou ! On joue ?", "Miaou-coucou ! Prête à lire ?", "Te revoilà ! Je t'attendais."],
+    bonjour: ["Coucou{p} ! On joue ?", "Miaou-coucou ! Prête à lire ?", "Te revoilà ! Je t'attendais."],
     carte: "Choisis un niveau !",
-    bravo: ["Bravo !", "Super !", "Génial !", "Trop fort !", "Bien joué !", "Miam, une croquette !"],
+    // Réussi du premier coup
+    bravo: ["Bravo{p} !", "Super{p} !", "Génial !", "Trop fort{p} !", "Bien joué{p} !", "Miam, une croquette !",
+      "Du premier coup{p} !", "Tu as l'œil{p} !", "Exactement !", "Oui, c'est ça{p} !", "Ronron… c'est parfait !",
+      "Quelle championne !"],
+    // Réussi au deuxième essai
+    bravoEssai: ["Bien rattrapé{p} !", "Voilà, tu l'as trouvé{p} !", "Bravo, tu n'as rien lâché !",
+      "Oui ! Le deuxième essai était le bon.", "Tu as bien cherché{p} !", "C'est ça ! Tu as bien réfléchi."],
+    // Série de bonnes réponses du premier coup (toutes les 3)
+    bravoSerie: ["Quelle série{p} !", "Tu enchaînes{p} ! Je ronronne de joie !", "Rien ne t'arrête{p} !",
+      "Tu lis comme une grande{p} !", "Encore juste ! Et encore, et encore !", "Tout juste, à chaque fois{p} !"],
     reessaie: ["Presque ! On réessaie ?", "Hmm… regarde bien. Encore une fois ?"],
     solution: ["Regarde, c'était ça.", "Voilà la réponse. On continue !"],
     rienEntendu: "Je n'ai rien entendu… Lis-le moi à voix haute !",
-    finNiveau: ["Niveau réussi ! Je danse !", "Youpi ! Quel talent !"],
+    // Fin d'un niveau réussi
+    finNiveau: ["Niveau réussi{p} ! Je danse !", "Youpi{p} ! Quel talent !", "Hourra ! Tu as fini le niveau !",
+      "Niveau gagné{p} ! Regarde tes étoiles !", "Quelle lectrice{p} ! On fait la fête !", "Mission réussie ! Je suis fier de toi{p} !"],
     finRate: "On a bien travaillé ! On recommence pour gagner une étoile ?",
     gardien: "Tu as battu le gardien du monde ! C'est la fête !",
     bloque: "Ce niveau est encore fermé. Réussis le niveau d'avant !",
     plafond: "Ce son-là, ta maîtresse va bientôt te l'apprendre ! En attendant, rejoue un niveau ou décore ma maison.",
     pause: "On a beaucoup joué ! Une petite pause ?",
-    plafondFin: "Bravo ! Tu sais lire tous les sons vus en classe. Le prochain, ta maîtresse va te le montrer. En attendant, on décore ma maison ?",
+    plafondFin: "Bravo{p} ! Tu sais lire tous les sons vus en classe. Le prochain, ta maîtresse va te le montrer. En attendant, on décore ma maison ?",
     nouveauSon: "Un nouveau son est arrivé ! Viens vite le découvrir !",
     nouvelleCollection: "Une nouvelle collection dans ma maison !",
     maison: "Ma maison ! Touche un objet pour l'essayer.",

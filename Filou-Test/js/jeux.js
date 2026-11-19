@@ -1,4 +1,4 @@
-/* Filou lit — les 9 mini-jeux (V2)
+/* Filou lit — les 9 mini-jeux (V2, corrections du 19/11/2026)
    Chaque jeu dessine son exercice dans ui.table et se résout avec les points gagnés :
    1 = réussi du premier coup, 0.5 = réussi au deuxième essai, 0 = solution montrée. */
 "use strict";
@@ -41,7 +41,11 @@ var JEUX = (function () {
 
   function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
   function hautParleur(gros = false) { return `<button class="haut-parleur${gros ? " gros" : ""}" data-ecouter aria-label="Réécouter">🔊</button>`; }
-  function brancherHautParleur(table, action) { table.querySelectorAll("[data-ecouter]").forEach(b => b.onclick = () => { VOIX.son("pop"); action(); }); }
+  /* Bouton 🔊 : chaque nouvel appui passe le numéro de réécoute (1, 2, 3…) pour dire un peu plus lentement */
+  function brancherHautParleur(table, action) {
+    let rep = 0;
+    table.querySelectorAll("[data-ecouter]").forEach(b => b.onclick = () => { VOIX.son("pop"); action(++rep); });
+  }
 
   /* Choix unique parmi des cartes : gère essais, encouragements et solution */
   function choixUnique(ui, cartes, estBon, apresBon, solution) {
@@ -53,7 +57,7 @@ var JEUX = (function () {
         if (estBon(c)) {
           c.classList.add("bon"); cartes.forEach(x => { if (x !== c) x.classList.add("eteint"); });
           if (apresBon) await apresBon(c);
-          await ui.bravo(c);
+          await ui.bravo(c, essais === 0 ? 1 : 0.5);
           res(essais === 0 ? 1 : 0.5);
           return;
         }
@@ -77,7 +81,8 @@ var JEUX = (function () {
   async function trouveLettre(ex, ui) {
     ui.table.innerHTML = `<div class="consigne">${hautParleur(true)}</div>
       <div class="choix">${ex.options.map(o => `<button class="carte-choix" data-v="${esc(o)}">${esc(o)}</button>`).join("")}</div>`;
-    const dire = () => ui.lireSon(ex.cible, ex.dire);
+    let rep = 0;
+    const dire = (r = rep) => ui.lireSon(ex.cible, ex.dire, rep = r);
     brancherHautParleur(ui.table, dire);
     const p = choixUnique(ui, [...ui.table.querySelectorAll(".carte-choix")], c => c.dataset.v === ex.cible, null, () => dire());
     await ui.dire(D.FILOU.consignes.trouveLettre, "consigne_trouveLettre");
@@ -101,7 +106,8 @@ var JEUX = (function () {
   async function trouveSyllabe(ex, ui) {
     ui.table.innerHTML = `<div class="consigne">${hautParleur(true)}</div>
       <div class="choix">${ex.options.map(o => `<button class="carte-choix" data-v="${esc(o)}"><span>${enHTML(o, ui.focus)}</span></button>`).join("")}</div>`;
-    const dire = () => ui.lireSyllabe(ex.dire);
+    let rep = 0;
+    const dire = (r = rep) => ui.lireSyllabe(ex.dire, rep = r);
     brancherHautParleur(ui.table, dire);
     const p = choixUnique(ui, [...ui.table.querySelectorAll(".carte-choix")], c => c.dataset.v === ex.cible, null, () => dire());
     await ui.dire(D.FILOU.consignes.trouveSyllabe, "consigne_trouveSyllabe");
@@ -120,7 +126,8 @@ var JEUX = (function () {
         <div class="rangees${n === 3 ? " trois" : ""}">${ex.rangees.map((r, k) => `<div class="rangee"><div class="rangee-titre">${esc(r.nom)}</div>
         <div class="tuiles">${r.tuiles.map(t => `<button class="tuile${r.voyelle ? " voyelle" : ""}${k === 1 && n === 3 ? " accroche" : ""}" data-k="${k}" data-t="${esc(t)}">${r.voyelle ? esc(t) : enHTML(t, ui.focus)}</button>`).join("")}</div></div>`).join("")}</div>`;
       const cases = [...ui.table.querySelectorAll(".case")];
-      const dire = () => ui.lireSyllabe(ex.dire);
+      let rep = 0;
+      const dire = (r = rep) => ui.lireSyllabe(ex.dire, rep = r);
       brancherHautParleur(ui.table, dire);
       let pris = [], essais = 0, verrou = false;
       const vider = () => { pris = []; cases.forEach((c, i) => { c.textContent = ""; c.className = "case" + (i === 0 ? " prochaine" : ""); }); };
@@ -139,7 +146,7 @@ var JEUX = (function () {
         verrou = true;
         const faite = pris.join("");
         await ui.lireSyllabe(faite);
-        if (faite === ex.cible) { await ui.bravo(cases[n - 1]); res(essais === 0 ? 1 : 0.5); return; }
+        if (faite === ex.cible) { await ui.bravo(cases[n - 1], essais === 0 ? 1 : 0.5); res(essais === 0 ? 1 : 0.5); return; }
         essais++; ui.noterErreur(faite);
         cases.forEach(c => c.classList.add("faux"));
         if (essais >= 2) {
@@ -186,7 +193,7 @@ var JEUX = (function () {
         entendu.innerHTML = message ? `<span>${esc(message)}</span>` : "";
         const b = el(`<button class="btn or">👍 J'ai lu !</button>`);
         ui.table.appendChild(b);
-        b.onclick = async () => { b.remove(); await ui.lire(M.brut(ex.texte)); reveler(); await ui.bravo(ui.table.querySelector(".image-cachee") || micro); res(1); };
+        b.onclick = async () => { b.remove(); await ui.lire(M.brut(ex.texte)); reveler(); await ui.bravo(ui.table.querySelector(".image-cachee") || micro, 1); res(1); };
       };
 
       await ui.dire(D.FILOU.consignes.disLe, "consigne_disLe");
@@ -206,7 +213,7 @@ var JEUX = (function () {
         micro.classList.remove("ecoute"); barre.style.transition = "none"; barre.style.transform = "scaleX(0)";
         if (ui.annule()) return;
         ui.noterLecture(ex.texte, r);
-        if (r.etat === "ok") { souligner(motsAffiches.length); reveler(); await ui.bravo(ui.table.querySelector(".image-cachee") || micro); res(essai === 1 ? 1 : 0.5); return; }
+        if (r.etat === "ok") { souligner(motsAffiches.length); reveler(); await ui.bravo(ui.table.querySelector(".image-cachee") || micro, essai === 1 ? 1 : 0.5); res(essai === 1 ? 1 : 0.5); return; }
         if (r.etat === "erreur") {
           const msg = r.message === "not-allowed" ? "Le micro n'est pas autorisé." : r.message === "service-not-allowed" ? "La dictée du Mac est désactivée." : r.message === "network" ? "Pas d'internet pour l'écoute." : "Filou n'arrive pas à écouter.";
           sansEcoute(msg); return;
@@ -230,7 +237,8 @@ var JEUX = (function () {
         <div class="cases">${ex.lettres.map((l, i) => `<div class="case${i === 0 ? " prochaine" : ""}"></div>`).join("")}</div>
         <div class="tuiles">${ex.tuiles.map((l, i) => `<button class="tuile${M.VOYELLES.includes(l) || l === "y" || l === "ê" ? " voyelle" : ""}" data-l="${esc(l)}" data-i="${i}">${esc(l)}</button>`).join("")}</div>`;
       const cases = [...ui.table.querySelectorAll(".case")], tuiles = [...ui.table.querySelectorAll(".tuile")];
-      const dire = () => ui.lire(M.brut(ex.mot), { lent: true });
+      let rep = 0;
+      const dire = (r = rep) => ui.lire(M.brut(ex.mot), { mot: true, rep: rep = r });
       brancherHautParleur(ui.table, dire);
       let pos = 0, erreurs = 0, erreursIci = 0, verrou = true;
       tuiles.forEach(t => t.onclick = async () => {
@@ -244,8 +252,9 @@ var JEUX = (function () {
           if (pos === ex.lettres.length) {
             verrou = true;
             await ui.lire(M.brut(ex.mot));
-            await ui.bravo(cases[cases.length - 1]);
-            res(erreurs <= 1 ? 1 : erreurs <= 3 ? 0.5 : 0);
+            const pts = erreurs <= 1 ? 1 : erreurs <= 3 ? 0.5 : 0;
+            await ui.bravo(cases[cases.length - 1], erreurs === 0 ? 1 : 0.5);
+            res(pts);
           }
           return;
         }
@@ -284,7 +293,8 @@ var JEUX = (function () {
     let haut, dire, apres;
     if (ex.mode === "entends") {
       haut = `<div class="consigne">${ex.image ? `<span class="image-indice">${ex.image}</span>` : ""}${hautParleur(!ex.image)}</div>`;
-      dire = () => ex.syllabe ? ui.lireSyllabe(ex.dire) : ui.lire(ex.dire);
+      let rep = 0;
+      dire = (r = rep) => ex.syllabe ? ui.lireSyllabe(ex.dire, rep = r) : ui.lire(ex.dire, { mot: true, rep: rep = r });
     } else {
       const avant = ex.mot.slice(0, ex.trou), apresT = ex.mot.slice(ex.trou + 1);
       haut = `<div class="image-indice">${ex.image}</div><div class="a-lire">${enHTML(avant)}<span class="trou-lettre">?</span>${enHTML(apresT)}</div>`;

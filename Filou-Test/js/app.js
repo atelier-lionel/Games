@@ -19,7 +19,7 @@
       niveaux: {}, croquettes: 0, possede: [], porte: {},
       maison: { possede: Object.values(MAISON_DEPART), place: Object.assign({}, MAISON_DEPART) },
       plafondVu: null, collectionsVues: [1],
-      reglages: { voix: "", voixFilou: "", vitesse: 0.85, hauteur: 1.15, sons: true, ecoute: true },
+      reglages: { voix: "", voixFilou: "", vitesse: 0.85, vitesseMots: 0.7, hauteur: 1.15, sons: true, ecoute: true },
       erreurs: {}, rates: [], lectures: [], temps: {},
     };
   }
@@ -69,12 +69,29 @@
     });
   }
   function bulle(t) { $("#bulle").textContent = t; $("#bulle-maison").textContent = t; }
-  const avecPrenom = t => etat.prenom ? t.replace(/^(Coucou|Bravo|Super|Génial|Youpi)( !| )/, `$1 ${etat.prenom}$2`) : t;
-  /* Filou dit une phrase (variantes tirées au hasard ; enregistrement sons/filou/<clé>.m4a s'il existe) */
+  /* Prénom : « {p} » dans une phrase de Filou marque où il peut se placer (« Bravo{p} ! » → « Bravo, Lou ! »).
+     Accueil : toujours (« Coucou … ! »). Encouragements : environ une fois sur quatre, jamais deux fois de suite. */
+  const avecPrenom = (t, mettre) => t.replace(/\{p\}/g, mettre && etat.prenom ? ", " + etat.prenom : "");
+  const ENCOURAGEMENTS = ["bravo", "bravoEssai", "bravoSerie", "finNiveau"];
+  const PART_PRENOM = 0.33;         // tirage ; avec « jamais deux fois de suite », ≈ 1 fois sur 4 (simulation : 25 %)
+  const SANS_REPETITION = 5;        // une formule ne revient pas avant que 5 autres aient été dites
+  let recents = [], prenomDernier = false;
+  /* Filou dit une phrase (variantes tirées au hasard ; enregistrement sons/filou/<clé><n>.m4a s'il existe) */
   function direCle(cle) {
     const v = D.FILOU[cle];
-    if (Array.isArray(v)) { const i = Math.floor(Math.random() * v.length); return dire(avecPrenom(v[i]), cle + (i + 1)); }
-    return dire(avecPrenom(v), cle);
+    if (!Array.isArray(v)) return dire(avecPrenom(v, true), cle);
+    if (!ENCOURAGEMENTS.includes(cle)) { const i = Math.floor(Math.random() * v.length); return dire(avecPrenom(v[i], true), cle + (i + 1)); }
+    // Encouragement : formules pas dites récemment ; si le prénom est tiré, parmi celles qui peuvent le porter
+    const prenom = !!etat.prenom && !prenomDernier && Math.random() < PART_PRENOM;
+    let idx = v.map((_, i) => i).filter(i => !recents.includes(v[i]));
+    if (!idx.length) idx = v.map((_, i) => i);
+    const avecP = idx.filter(i => v[i].includes("{p}"));
+    const pool = prenom && avecP.length ? avecP : idx;
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    const mettre = prenom && v[i].includes("{p}");
+    prenomDernier = mettre;
+    recents = [v[i], ...recents].slice(0, SANS_REPETITION);
+    return dire(avecPrenom(v[i], mettre), cle + (i + 1));
   }
   function dire(texte, fichier) { bulle(texte); return VOIX.filou(texte, fichier); }
 
@@ -260,7 +277,7 @@
       html = `<h2 class="lecon-titre">Deux lettres qui se tiennent la main</h2>
         <div class="accroche"><b class="rouge">${esc(ex[0])}</b><span class="main">🤝</span><b class="rouge">${esc(ex[1])}</b><span class="egal">→</span><b class="rouge">${esc(ex)}</b><span class="plus">+ a →</span><b><span class="rouge">${esc(ex)}</span>a</b></div>
         <div class="groupes">${niv.g.map(g => `<span class="rouge">${esc(g)}</span>`).join("")}</div>`;
-      texte = `Quand le ${niv.lie === "r" ? "r" : "l"} s'accroche à une consonne, on les lit ensemble, d'un seul coup ! Écoute : ${niv.syllabes.join(", ")}.`;
+      texte = `Quand le ${niv.lie === "r" ? "r" : "l"} s'accroche à une consonne, on les lit ensemble, d'un seul coup ! Écoute : ${niv.syllabes.map(x => D.PRONONCE[x] || x).join(", ")}.`;
     } else if (niv.type === "outil") {
       html = `<h2 class="lecon-titre">Deux petits mots</h2><div class="lecon"><div><b>et</b><span>Léa et Rémi</span></div><div><b>est</b><span>Rémi est là</span></div></div>`;
       texte = "Deux petits mots à bien regarder : et, comme dans Léa et Rémi. Et est, comme dans Rémi est là.";
@@ -312,22 +329,25 @@
     await introduction(niv, table);
     if (jeton !== monJeton) return;
 
-    let points = 0, exCourant = null;
+    let points = 0, exCourant = null, serie = 0;
     const ui = {
       table, focus, ecouteActive,
       annule: () => jeton !== monJeton,
       bulle,
       dire: (t, f) => jeton === monJeton ? dire(t, f) : Promise.resolve(),
       lire: (t, o) => jeton === monJeton ? VOIX.parler(t, o) : Promise.resolve(),
-      lireSyllabe: s => jeton === monJeton ? VOIX.syllabe(s, D.PRONONCE) : Promise.resolve(),
-      lireSon: async (g, texte) => { if (jeton !== monJeton) return; if (!(await VOIX.lettre(g))) await VOIX.parler(texte); },
-      bravo: async (depuis) => {
+      // Syllabes et sons à reconnaître : vitesse des mots ; rep = numéro de réécoute (🔊)
+      lireSyllabe: (s, rep = 0) => jeton === monJeton ? VOIX.syllabe(s, D.PRONONCE, rep) : Promise.resolve(),
+      lireSon: async (g, texte, rep = 0) => { if (jeton !== monJeton) return; if (!(await VOIX.lettre(g))) await VOIX.parler(texte, { mot: true, rep }); },
+      // Encouragement adapté : série de bonnes réponses du premier coup, premier coup, deuxième essai
+      bravo: async (depuis, pts = 1) => {
         if (jeton !== monJeton) return;
         VOIX.son("bon"); anim("ronron"); gagner(1, depuis);
-        await direCle("bravo"); await attendre(250);
+        serie = pts >= 1 ? serie + 1 : 0;
+        await direCle(pts < 1 ? "bravoEssai" : serie >= 3 && serie % 3 === 0 ? "bravoSerie" : "bravo"); await attendre(250);
       },
-      rate: async () => { if (jeton !== monJeton) return; VOIX.son("faux"); anim("penche"); await direCle("reessaie"); },
-      solution: async (montrer) => { if (jeton !== monJeton) return; anim("penche"); await direCle("solution"); if (montrer) await montrer(); await attendre(700); },
+      rate: async () => { if (jeton !== monJeton) return; serie = 0; VOIX.son("faux"); anim("penche"); await direCle("reessaie"); },
+      solution: async (montrer) => { if (jeton !== monJeton) return; serie = 0; anim("penche"); await direCle("solution"); if (montrer) await montrer(); await attendre(700); },
       noterErreur: choisi => noterErreur(niv, exCourant, choisi),
       noterLecture: (texte, r) => { etat.lectures.unshift({ d: new Date().toISOString().slice(0, 16), n: niv.id, t: M.brut(texte), e: r.texte || "", r: r.etat }); etat.lectures = etat.lectures.slice(0, 40); sauver(); },
     };
@@ -617,13 +637,15 @@
       <div class="bloc"><h2>Voix et sons</h2>
         <div class="champ"><label for="p-voix">Voix de lecture</label><select id="p-voix">${voix}</select></div>
         <div class="champ"><label for="p-voix-filou">Voix de Filou</label><select id="p-voix-filou">${voix}</select></div>
-        <div class="champ"><label for="p-vitesse">Vitesse : <span id="p-v-val">${etat.reglages.vitesse}</span></label><input type="range" id="p-vitesse" min="0.5" max="1.1" step="0.05" value="${etat.reglages.vitesse}"></div>
+        <div class="champ"><label for="p-vitesse">Vitesse de Filou et des phrases : <span id="p-v-val">${etat.reglages.vitesse}</span></label><input type="range" id="p-vitesse" min="0.5" max="1.1" step="0.05" value="${etat.reglages.vitesse}"></div>
+        <div class="champ"><label for="p-vitesse-mots">Vitesse des mots à reconnaître : <span id="p-vm-val">${etat.reglages.vitesseMots}</span></label><input type="range" id="p-vitesse-mots" min="0.4" max="1.1" step="0.05" value="${etat.reglages.vitesseMots}"></div>
+        <p class="note">Syllabes, sons, dictée et défi sont dits à la seconde vitesse. Chaque nouvel appui sur 🔊 dans un même exercice les redit encore un peu plus lentement (−10 % à chaque fois, jamais sous 0,5).</p>
         <div class="champ"><label for="p-hauteur">Hauteur de Filou : <span id="p-h-val">${etat.reglages.hauteur}</span></label><input type="range" id="p-hauteur" min="0.8" max="1.6" step="0.05" value="${etat.reglages.hauteur}"></div>
         <div class="champ"><label for="p-sons">Effets sonores</label><input type="checkbox" id="p-sons"${etat.reglages.sons ? " checked" : ""}></div>
         <div class="champ"><label for="p-ecoute">Lecture à voix haute</label><input type="checkbox" id="p-ecoute"${etat.reglages.ecoute ? " checked" : ""}></div>
         <p class="note">Reconnaissance vocale : ${VOIX.recoDispo ? "disponible" : "absente dans ce navigateur (utiliser Safari)"}. Sans elle, « Dis-le à Filou » est remplacé par « Lis et trouve ».</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn clair" id="p-test">Écouter un essai</button><button class="btn clair" id="p-test-fv">Écouter fa va fo vo fu vu</button></div>
-        <p class="note">Diagnostic f/v : le bouton fait dire les syllabes exactement comme dans le jeu (« vo » est dit « veau » pour éviter une lecture en sigle). Si une syllabe sonne mal, enregistre-la dans sons/syllabes/ (ex. vo.m4a).</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn clair" id="p-test">Écouter un essai</button><button class="btn clair" id="p-test-fv">Écouter fa va fo vo fu vu</button><button class="btn clair" id="p-syllabes">Écouter toutes les syllabes</button></div>
+        <p class="note">Les boutons font dire les syllabes exactement comme dans le jeu (« vo » est dit « veau », « za » est écrit « zà » pour éviter une lecture en sigle). Si une syllabe sonne mal, note-la ; ou enregistre-la dans sons/syllabes/ (ex. vo.m4a).</p>
       </div>
       <div class="bloc"><h2>Suivi</h2>
         <p class="note">Temps de jeu : aujourd'hui ${Math.round(auj / 60)} min · au total ${Math.round(total / 60)} min · croquettes : ${etat.croquettes} · maison : ${etat.maison.possede.length - 3} objets · accessoires : ${etat.possede.length}</p>
@@ -656,11 +678,13 @@
     $("#p-voix").onchange = e => { etat.reglages.voix = e.target.value; reg(); };
     $("#p-voix-filou").onchange = e => { etat.reglages.voixFilou = e.target.value; reg(); };
     $("#p-vitesse").oninput = e => { etat.reglages.vitesse = +e.target.value; $("#p-v-val").textContent = e.target.value; reg(); };
+    $("#p-vitesse-mots").oninput = e => { etat.reglages.vitesseMots = +e.target.value; $("#p-vm-val").textContent = e.target.value; reg(); };
+    $("#p-syllabes").onclick = () => { VOIX.stop(); ouvrirSyllabes(); };
     $("#p-hauteur").oninput = e => { etat.reglages.hauteur = +e.target.value; $("#p-h-val").textContent = e.target.value; reg(); };
     $("#p-sons").onchange = e => { etat.reglages.sons = e.target.checked; reg(); };
     $("#p-ecoute").onchange = e => { etat.reglages.ecoute = e.target.checked; reg(); };
-    $("#p-test").onclick = async () => { await VOIX.filou("Coucou ! Je suis Filou."); await VOIX.parler("la fumée, le navire, fa, vo, mi"); };
     $("#p-test-fv").onclick = async () => { for (const s of ["fa", "va", "fo", "vo", "fu", "vu"]) { await VOIX.syllabe(s, D.PRONONCE); await attendre(350); } };
+    $("#p-test").onclick = async () => { await VOIX.filou("Coucou ! Je suis Filou."); await VOIX.parler("la fumée, le navire"); for (const s of ["fa", "vo", "mi"]) { await VOIX.syllabe(s, D.PRONONCE); await attendre(300); } };
     $("#p-rapport").value = rapport();
     $("#p-copier").onclick = async () => {
       const t = $("#p-rapport");
@@ -673,6 +697,38 @@
     };
     $("#p-fermer").onclick = () => { p.hidden = true; p.innerHTML = ""; allerCarte(N[niveauActuel()].monde); };
   }
+  /* Espace parent › « Écouter toutes les syllabes » : chaque syllabe que le jeu peut dire seule, avec
+     l'écriture donnée à la voix du Mac (table PRONONCE). Toucher une syllabe la fait dire comme dans le jeu ;
+     « Tout écouter » les enchaîne. Sert à repérer à l'oreille celles qui sonnent comme un sigle. */
+  function ouvrirSyllabes() {
+    const p = $("#ecran-parent");
+    const syls = M.toutesSyllabes();
+    const attaques = [...new Set(syls.map(x => x.slice(0, -1)))];
+    const bouton = x => { const e = D.PRONONCE[x] || x; return `<button class="btn clair syl" data-s="${esc(x)}"><b>${esc(x)}</b>${e !== x ? ` <small>→ ${esc(e)}</small>` : ""}</button>`; };
+    p.innerHTML = `<div class="parent-int">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h1>Toutes les syllabes</h1><span class="espace"></span><button class="btn" id="s-retour">Retour</button></div>
+      <div class="bloc">
+        <p class="note">${syls.length} syllabes, dites exactement comme dans le jeu (vitesse des mots à reconnaître). En gras, la syllabe ; après la flèche, l'écriture donnée à la voix du Mac. Note celles qui sonnent faux (sigle, mauvais son) pour les corriger. Un enregistrement sons/syllabes/&lt;syllabe&gt;.m4a passe avant la voix.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn or" id="s-tout">▶ Tout écouter</button><button class="btn clair" id="s-stop">■ Arrêter</button></div>
+      </div>
+      ${attaques.map(u => `<div class="bloc"><h2>${esc(u)}</h2><div style="display:flex;gap:8px;flex-wrap:wrap">${syls.filter(x => x.slice(0, -1) === u).map(bouton).join("")}</div></div>`).join("")}
+    </div>`;
+    let tour = 0;   // chaque « Tout écouter » ou « Arrêter » invalide l'enchaînement précédent
+    const marquer = b => p.querySelectorAll(".syl").forEach(x => x.classList.toggle("or", x === b));
+    p.querySelectorAll(".syl").forEach(b => b.onclick = () => { tour++; VOIX.stop(); marquer(b); VOIX.syllabe(b.dataset.s, D.PRONONCE); });
+    $("#s-tout").onclick = async () => {
+      const moi = ++tour;
+      for (const b of p.querySelectorAll(".syl")) {
+        if (moi !== tour) return;
+        marquer(b); b.scrollIntoView({ block: "nearest" });
+        await VOIX.syllabe(b.dataset.s, D.PRONONCE); await attendre(400);
+      }
+      marquer(null);
+    };
+    $("#s-stop").onclick = () => { tour++; VOIX.stop(); marquer(null); };
+    $("#s-retour").onclick = () => { tour++; VOIX.stop(); ouvrirParent(); };
+    p.scrollTop = 0;
+  }
   function rapport() {
     const conf = confusions();
     return [
@@ -680,7 +736,7 @@
       `Navigateur : ${navigator.userAgent}`,
       `Niveau en cours : ${N[niveauActuel()].id} · plafond : ${etat.plafond || "aucun"} · croquettes : ${etat.croquettes} · accessoires : ${etat.possede.join(", ") || "aucun"}`,
       `Maison : ${etat.maison.possede.filter(id => !Object.values(MAISON_DEPART).includes(id)).join(", ") || "rien acheté"}`,
-      `Voix : ${etat.reglages.voix || "défaut"} / Filou : ${etat.reglages.voixFilou || "défaut"} · écoute ${etat.reglages.ecoute && VOIX.recoDispo ? "active" : "inactive"}`,
+      `Voix : ${etat.reglages.voix || "défaut"} / Filou : ${etat.reglages.voixFilou || "défaut"} · vitesses ${etat.reglages.vitesse} / mots ${etat.reglages.vitesseMots} · écoute ${etat.reglages.ecoute && VOIX.recoDispo ? "active" : "inactive"}`,
       `Confusions repérées : ${Object.entries(conf).map(([k, v]) => `${k} ×${v}`).join(", ") || "aucune"}`,
       "", "NIVEAUX", ...[...N, ...D.DEFIS].filter(n => etat.niveaux[n.id]).map(n => { const r = etat.niveaux[n.id]; return `- ${n.id} : ${r.etoiles}★ meilleur ${r.meilleur} % · ${r.joue} partie(s) · ${etat.erreurs[n.id] || 0} erreur(s)`; }),
       "", "DERNIÈRES ERREURS (demandé → réponse)", ...etat.rates.slice(0, 25).map(r => `- ${r.d} ${r.n} ${r.j} : ${r.q}${r.x ? " → " + r.x : ""}`),
